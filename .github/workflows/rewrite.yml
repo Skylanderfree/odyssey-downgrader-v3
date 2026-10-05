@@ -1,0 +1,116 @@
+name: Build nxdumptool-rewrite binary
+
+on:
+  push:
+    branches: [ rewrite ]
+
+    paths:
+      - '.github/workflows/rewrite.yml'
+      - 'code_templates/**'
+      - 'include/**'
+      - 'libs/**'
+      - 'romfs/**'
+      - 'source/**'
+      - 'build.sh'
+      - 'Makefile'
+
+  # Allows you to run this workflow manually from the Actions tab.
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: devkitpro/devkita64
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Set environment variables
+        run: |
+          echo "nxdt_commit=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Clone nxdumptool repository
+        uses: actions/checkout@v4
+        with:
+          path: nxdumptool
+          submodules: recursive
+
+      - name: Build nxdumptool-rewrite PoC binary
+        id: build
+        continue-on-error: true
+        working-directory: nxdumptool
+        run: |
+          chmod +x ./build.sh
+          ./build.sh --noconfirm
+
+      - name: Clone libnx repository
+        if: ${{ steps.build.outcome == 'failure' }}
+        uses: actions/checkout@v4
+        with:
+          repository: switchbrew/libnx
+          path: libnx
+          submodules: recursive
+
+      - name: Install latest libnx commit and retry build
+        if: ${{ steps.build.outcome == 'failure' }}
+        run: |
+          cd "$GITHUB_WORKSPACE/libnx"
+          make install -j8
+          cd "$GITHUB_WORKSPACE/nxdumptool"
+          ./build.sh --noconfirm
+
+      - name: Build nxdumptool-rewrite UI binary
+        working-directory: nxdumptool
+        run: |
+          make -j8
+
+      - name: Upload nxdumptool-rewrite PoC NRO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nxdt_rw_poc-${{ env.nxdt_commit }}.nro
+          path: nxdumptool/code_templates/tmp/nxdt_rw_poc.nro
+          if-no-files-found: error
+
+      - name: Upload nxdumptool-rewrite PoC ELF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nxdt_rw_poc-${{ env.nxdt_commit }}.elf
+          path: nxdumptool/code_templates/tmp/nxdt_rw_poc.elf
+          if-no-files-found: error
+
+      - name: Upload nxdumptool-rewrite UI NRO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nxdumptool-rewrite-${{ env.nxdt_commit }}-WIP_UI.nro
+          path: nxdumptool/nxdumptool.nro
+          if-no-files-found: error
+
+      - name: Upload nxdumptool-rewrite UI ELF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nxdumptool-rewrite-${{ env.nxdt_commit }}-WIP_UI.elf
+          path: nxdumptool/nxdumptool.elf
+          if-no-files-found: error
+
+      - name: Upload nxdumptool-rewrite PoC artifacts to pre-release
+        uses: ncipollo/release-action@v1
+        with:
+          # Only update attachments on "rewrite-prerelease" tag.
+          prerelease: True
+          tag: "rewrite-prerelease"
+          updateOnlyUnreleased: True
+          # Remove old artifacts and replace with new ones.
+          removeArtifacts: False
+          replacesArtifacts: True
+          # Update preferences.
+          allowUpdates: True
+          omitBody: True
+          omitBodyDuringUpdate: True
+          omitNameDuringUpdate: True
+          artifacts: "nxdumptool/code_templates/tmp/nxdt_rw_poc.*"
+          #artifacts: "nxdumptool/code_templates/tmp/nxdt_rw_poc.*, nxdumptool/nxdumptool.*"
+          token: ${{ secrets.GITHUB_TOKEN }}

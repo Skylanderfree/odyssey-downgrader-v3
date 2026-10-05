@@ -1,0 +1,16 @@
+/.vscode
+/debug
+/release
+/lib
+*.tar*
+*.tgz
+*.zip
+*.log
+*.bin
+*.pcapng
+*.elf
+*.nacp
+*.nro
+*.code-workspace
+/example_callback/build
+/example_event/build

@@ -1,0 +1,56 @@
+{
+    "dump_options_info": "Dump options are displayed in their respective menus for convenience.",
+
+    "overclock": {
+        "label": "Overclock",
+        "description": "Overclocks both CPU and MEM exclusively while a dump operation is running, in order to speed it up. This is considered a relatively safe action.\n\nIf the application is running under title override mode, and sys-clk is active, and a clock profile has been created for the overridden title, this setting has no effect at all."
+    },
+
+    "naming_convention": {
+        "label": "Naming convention",
+        "description": "Sets the naming convention used for all output dumps.\n\n\uE016  Full: \"{Name} [{Id}][v{Version}][{Type}]\".\n\uE016  ID and version only: \"{Id}_v{Version}_{Type}\".\n\nIf \"Full\" is selected, the display version string will also be appended to dumped updates whenever possible.",
+        "value_00": "Full",
+        "value_01": "ID and version only"
+    },
+
+    "unmount_ums_device": {
+        "label": "Unmount USB Mass Storage device",
+        "description": "Safely unmount any USB Mass Storage devices that are currently connected and mounted by {0}.\n\nIf a UMS device has more than one mounted volume, selecting a single one will unmount all volumes from that device.\n\nUMS devices are always safely unmounted at exit."
+    },
+
+    "update_app": {
+        "label": "Update application",
+        "description": "Checks if an update is available in nxdumptool's GitHub repository. Requires an Internet connection.",
+        "frame": {
+            "please_wait": "Please wait…",
+            "release_details": "Commit hash: {0:.7}\nRelease date: {1} UTC+0",
+            "changelog_header": "Changelog",
+            "update_action": "Update"
+        }
+    },
+
+    "reset_settings": {
+        "label": "Reset settings",
+        "description": "Resets all settings to their default values, including the ones not reflected in this menu (e.g. dump options, etc.)."
+    },
+
+    "wipe_local_title_cache": {
+        "label": "Wipe local title cache",
+        "description": "Completely wipes the local title cache file from the SD card. Useful if you intentionally want to force a complete cache renewal for some reason."
+    },
+
+    "notifications": {
+        "no_ums_devices": "No USB Mass Storage devices available.",
+        "ums_device_unmount_success": "USB Mass Storage device successfully unmounted!",
+        "ums_device_unmount_failed": "Failed to unmount USB Mass Storage device!",
+        "no_internet_connection": "Internet connection unavailable. Unable to update.",
+        "update_failed": "Update failed! Check the logfile for more info.",
+        "is_nso": "The application is running as an NSO. Unable to update.",
+        "already_updated": "The application has already been updated. Please reload.",
+        "github_json_failed": "Failed to download or parse GitHub release JSON!",
+        "up_to_date": "The application is up to date!",
+        "app_updated": "Application successfully updated! Please reload for the changes to take effect.",
+        "settings_reset": "User settings have been reset.",
+        "wipe_local_title_cache": "Title cache wiped. Please reload the application to rebuild it."
+    }
+}

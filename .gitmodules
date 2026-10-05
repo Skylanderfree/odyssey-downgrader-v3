@@ -1,0 +1,12 @@
+[submodule "libusbhsfs"]
+	path = libs/libusbhsfs
+	url = https://github.com/DarkMatterCore/libusbhsfs
+	branch = dev
+[submodule "borealis"]
+	path = libs/borealis
+	url = https://github.com/DarkMatterCore/borealis
+	branch = nxdumptool-legacy
+[submodule "libs/libnxtc"]
+	path = libs/libnxtc
+	url = https://github.com/DarkMatterCore/libnxtc
+	branch = main
