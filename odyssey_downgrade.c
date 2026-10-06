@@ -487,9 +487,6 @@ cleanup:
     if (buf) free(buf);
 
     if (app_metadata) free(app_metadata);
-
-    consolePrint("press any button to exit\n");
-    utilsWaitForButtonPress(0);
 }
 
 void do_add_patch() {
