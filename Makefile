@@ -68,8 +68,6 @@ APP_AUTHOR			:=	Shadow, Skylanderfree
 APP_VERSION			:=	3.0.0
 
 # TODO: remove this after the PoC builds are no longer needed.
-ifneq ($(origin BUILD_TYPE),undefined)
-endif
 
 BUILD_TIMESTAMP		:=	$(strip $(shell date --utc '+%Y-%m-%d %T UTC'))
 
