@@ -6,9 +6,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 filename="odyssey_downgrade"
 
-export ICON="romfs/icon/Odyssey\ Downgrade.jpg"
+export ICON="romfs/icon/odyssey_downgrade.jpg"
 export APP_TITLE="Odyssey Downgrade"
-export APP_AUTHOR="Shadów"
+export APP_AUTHOR="Shadów,Skylanderfree"
 
 # Clean-up from last build
 rm -rf ./out/
