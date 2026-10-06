@@ -1,5 +1,14 @@
 #!/bin/bash
 
+echo "=== DEBUG ICON ==="
+echo "PWD: $(pwd)"
+echo "APP_TITLE: ${APP_TITLE:-<unset>}"
+echo "ICON: ${ICON:-<unset>}"
+echo "APP_ICON: ${APP_ICON:-<unset>}"
+find /app/romfs -maxdepth 3 -type f -print
+ls -lah /app/romfs/icon/ || true
+echo "=================="
+
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
