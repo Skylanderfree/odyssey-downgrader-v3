@@ -78,7 +78,8 @@ TARGET				:=	${APP_TITLE}
 BUILD				:=	build
 SOURCES				:=	source source/core source/core/devoptab source/core/devoptab/fatfs source/tasks source/utils source/views
 DATA				:=	data
-ICON				:=	romfs/icon/Odyssey Downgrader.jpg
+ICON				:=	romfs/icon/odyssey_downgrade.jpg
+$(info ICON=$(ICON))
 INCLUDES			:=	include
 ROMFS       		:=	romfs
 
