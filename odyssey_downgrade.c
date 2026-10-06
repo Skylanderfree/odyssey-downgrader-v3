@@ -368,7 +368,7 @@ void do_add_downgrade() {
 
     consolePrint("creating file...");
 
-    if(!utilsCreateConcatenationFile(romfs_path, romfs_ctx.size))
+    if(!utilsCreateConcatenationFile(romfs_path))
     {
         consolePrint("create concatenation file failed\n");
         goto cleanup;
