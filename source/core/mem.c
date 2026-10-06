@@ -21,7 +21,7 @@
  */
 
 #include <switch/kernel/svc.h>
-
+    
 #include <core/nxdt_utils.h>
 #include <core/mem.h>
 
@@ -43,6 +43,35 @@ static u64 g_fsTextSegmentAddr = 0;
 static char *g_memLogBuf = NULL;
 static size_t g_memLogBufSize = 0;
 #endif
+
+typedef struct {
+    u32 type;
+    u32 flags;
+    u64 thread_id;
+    union {
+        struct {
+            u64 program_id;
+        } create_process;
+
+        struct {
+            u64 thread_id;
+        } create_thread;
+
+        struct {
+            u64 thread_id;
+            u32 exit_reason;
+        } exit_process;
+
+        struct {
+            u64 thread_id;
+        } exit_thread;
+
+        struct {
+            u64 thread_id;
+            u32 exception_type;
+        } exception;
+    } info;
+} MemDebugEventInfo;
 
 /* Function prototypes. */
 
@@ -260,7 +289,7 @@ static bool memRetrieveDebugHandleFromProgramById(Handle *out, u64 program_id)
     Result rc = 0;
     u64 pid = 0;
     Handle debug_handle = INVALID_HANDLE;
-    DebugEventInfo debug_event = {0};
+    MemDebugEventInfo debug_event = {0};
 
     u32 i = 0, num_processes = 0;
     u64 *pids = NULL;
@@ -319,7 +348,7 @@ static bool memRetrieveDebugHandleFromProgramById(Handle *out, u64 program_id)
 
             /* Get debug event using the debug handle. */
             /* This will let us know the program ID for the current process ID. */
-            rc = svcGetDebugEvent(&debug_event, debug_handle);
+            rc = svcGetDebugEvent((DebugEventInfo*)&debug_event, debug_handle);
             if (R_SUCCEEDED(rc))
             {
                 /* Jackpot. */
