@@ -1,12 +1,5 @@
 #!/bin/bash
 
-echo "=== DEBUG ICON ==="
-echo "PWD: $(pwd)"
-echo "ICON: ${ICON:-<unset>}"
-find /app/romfs -maxdepth 3 -type f -print
-ls -lah /app/romfs/icon/ || true
-echo "=================="
-
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
