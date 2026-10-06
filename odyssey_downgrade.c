@@ -523,6 +523,21 @@ end:
     utilsWaitForButtonPress(0);
 }
 
+void do_add_downgrade_patch() {
+    consoleClear();
+
+    // Add downgrade files
+    do_add_downgrade();
+
+    // Add patch
+    do_add_patch();
+
+    consoleClear();
+    consolePrint("downgrade and patch added\n");
+    consolePrint("press any button to exit\n");
+    utilsWaitForButtonPress(0);
+}
+
 void do_remove_downgrade() {
     consoleClear();
     FsFileSystem* fs = utilsGetSdCardFileSystemObject();
@@ -570,12 +585,13 @@ typedef enum _status_t {
 static status_t get_status() {
     status_t status = STATUS_NONE;
 
-    if(utilsCheckIfFileExists(romfs_path) && utilsCheckIfFileExists(exefs_path))
+    // checks if both downgrade & patch are applied
+    if(utilsCheckIfFileExists(romfs_path) && 
+    utilsCheckIfFileExists(exefs_path) &&
+    utilsCheckIfFileExists(patch_path))
+    {
         status |= STATUS_DOWNGRADE;
-
-    if(utilsCheckIfFileExists(patch_path))
-        status |= STATUS_PATCH;
-
+    }
     return status;
 }
 
@@ -604,20 +620,16 @@ int main(int argc, char *argv[])
     bool applet_status;
     int selected_idx = 0;
 
-    #define MENU_COUNT (4)
+    #define MENU_COUNT (2)
 
     const char* menu_names[MENU_COUNT] = {
-        "Add downgrade",
-        "Add patch",
-        "Remove downgrade",
-        "Remove patch",
+    "Apply downgrade",
+    "Remove downgrade",
     };
 
     const void (*menu_funcs[MENU_COUNT])() = {
-        do_add_downgrade,
-        do_add_patch,
-        do_remove_downgrade,
-        do_remove_patch,
+    do_add_downgrade_patch,
+    do_remove_downgrade,
     };
 
     status_t status = get_status();
@@ -634,15 +646,9 @@ int main(int argc, char *argv[])
         printf("\n");
 
         if(status & STATUS_DOWNGRADE) {
-            printf(GREEN "Downgrade already added.\n" RESET);
+            printf(GREEN "Downgrade & Patch are already added.\n" RESET);
         } else {
-            printf(RED "Downgrade not added.\n" RESET);
-        }
-
-        if(status & STATUS_PATCH) {
-            printf(GREEN "Patch already added.\n" RESET);
-        } else {
-            printf(RED "Patch not added.\n" RESET);
+            printf(RED "Downgrade & Patch are not added.\n" RESET);
         }
 
         consoleUpdate(NULL);
