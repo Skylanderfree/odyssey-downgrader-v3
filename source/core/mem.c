@@ -348,11 +348,11 @@ static bool memRetrieveDebugHandleFromProgramById(Handle *out, u64 program_id)
 
             /* Get debug event using the debug handle. */
             /* This will let us know the program ID for the current process ID. */
-            rc = svcGetDebugEvent((DebugEventInfo*)&debug_event, debug_handle);
+            rc = svcGetDebugEvent(&debug_event, debug_handle);
             if (R_SUCCEEDED(rc))
             {
                 /* Jackpot. */
-                if (debug_event.type == DebugEventType_CreateProcess && debug_event.info.create_process.program_id == program_id) break;
+                if (debug_event.type == 0 && debug_event.info.create_process.program_id == program_id) break;
             } else {
                 MEMLOG_DEBUG("svcGetDebugEvent failed for debug handle 0x%X! (0x%X).", debug_handle, rc);
             }
