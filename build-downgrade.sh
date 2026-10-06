@@ -2,7 +2,6 @@
 
 echo "=== DEBUG ICON ==="
 echo "PWD: $(pwd)"
-echo "APP_TITLE: ${APP_TITLE:-<unset>}"
 echo "ICON: ${ICON:-<unset>}"
 echo "APP_ICON: ${APP_ICON:-<unset>}"
 find /app/romfs -maxdepth 3 -type f -print
@@ -17,7 +16,7 @@ filename="odyssey_downgrade"
 
 export ICON="romfs/icon/odyssey_downgrade.jpg"
 export APP_TITLE="Odyssey Downgrade"
-export APP_AUTHOR="Shadów,Skylanderfree"
+export APP_AUTHOR="Shadów, Skylanderfree"
 
 # Clean-up from last build
 rm -rf ./out/
