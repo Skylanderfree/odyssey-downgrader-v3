@@ -69,7 +69,7 @@ APP_VERSION			:=	3.0.0
 
 # TODO: remove this after the PoC builds are no longer needed.
 ifneq ($(origin BUILD_TYPE),undefined)
-APP_TITLE			:=	Odyssey Downgrader
+APP_TITLE			:=	${BUILD_TYPE}
 endif
 
 BUILD_TIMESTAMP		:=	$(strip $(shell date --utc '+%Y-%m-%d %T UTC'))
