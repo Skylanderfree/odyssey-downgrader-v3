@@ -477,7 +477,7 @@ dump_start:
     }
 
     if(user_app_data.app_info->storage_id == NcmStorageId_GameCard)
-        consolePrint("if odysey doesn't launch, reinsert your gamecard.\n");
+        consolePrint("if odyssey doesn't launch, reinsert your gamecard.\n");
 
 cleanup:
     if (base_nca_ctx) free(base_nca_ctx);

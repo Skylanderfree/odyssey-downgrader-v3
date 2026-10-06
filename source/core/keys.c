@@ -720,10 +720,10 @@ static bool keysDeriveMasterKeys(void)
         /* Bail out immediately if the newer master keys are unavailable. */
         if (!current_mkey_available)
         {
-            LOG_MSG_ERROR("PKG1 key generation (%02X) is higher than the last known\r\n" \
-                          "key generation (%02X). Furthermore, one or more of the newer master keys are not\r\n" \
-                          "available in the keys file. Please redump your console keys and get an updated\r\n" \
-                          APP_TITLE " build before trying again. You can get newer builds at:\r\n%s\r\n%s", \
+            LOG_MSG_ERROR("Looks like your current keys are outdated (%02X) please update your Lockpick_RCM\r\n" \
+                          "and try again (%02X). Please redump your console keys or dump your keys if you haven't\r\n" \
+                          "already. Check to see if your" APP_TITLE " is updated before trying again.\r\n" \
+                          "If you're still having problems please go to:\r\n%s\r\n%s", \
                           g_atmosphereKeyGeneration, current_mkey_index, PRERELEASE_URL, DISCORD_SERVER_URL);
             return false;
         }

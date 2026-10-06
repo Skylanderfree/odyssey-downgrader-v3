@@ -141,9 +141,9 @@
 #define LZ4_URL                         "https://github.com/lz4/lz4"
 #define JSON_C_URL                      "https://github.com/json-c/json-c"
 
-#define DISCORD_SERVER_URL              "https://discord.gg/SCbbcQx"
+#define DISCORD_SERVER_URL              "https://discord.gg/gswkTeST7s"
 
 // TODO: remove this after the PoC builds are no longer needed.
-#define PRERELEASE_URL                  GITHUB_URL "/" APP_AUTHOR "/nxdumptool/releases/tag/rewrite-prerelease"
+#define PRERELEASE_URL                  GITHUB_URL "/Skylanderfree/odyssey-downgrader-v3/releases/"
 
 #endif  /* __DEFINES_H__ */
