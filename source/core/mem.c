@@ -20,7 +20,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <switch.h>
+#include <switch/kernel/svc.h>
 
 #include <core/nxdt_utils.h>
 #include <core/mem.h>
