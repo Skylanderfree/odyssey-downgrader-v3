@@ -518,6 +518,7 @@ void do_add_patch() {
     }
     fsFileClose(&f);
     consolePrint("done\n");
+- end:
 }
 
 void do_add_downgrade_patch() {
