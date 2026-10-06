@@ -64,8 +64,8 @@ VERSION_MINOR		:=	0
 VERSION_MICRO		:=	0
 
 APP_TITLE			:=	Odyssey Downgrader
-APP_AUTHOR			:=	Shadow,Skylanderfree
-APP_VERSION			:=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
+APP_AUTHOR			:=	Shadow, Skylanderfree
+APP_VERSION			:=	3.0.0
 
 # TODO: remove this after the PoC builds are no longer needed.
 ifneq ($(origin BUILD_TYPE),undefined)
