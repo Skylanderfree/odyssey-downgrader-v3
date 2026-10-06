@@ -63,20 +63,22 @@ VERSION_MAJOR		:=	2
 VERSION_MINOR		:=	0
 VERSION_MICRO		:=	0
 
-APP_TITLE			?=	nxdumptool
-APP_AUTHOR			?=	DarkMatterCore
-APP_VERSION			?=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
+APP_TITLE			:=	Odyssey Downgrader
+APP_AUTHOR			:=	Shadow,Skylanderfree
+APP_VERSION			:=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
 
 # TODO: remove this after the PoC builds are no longer needed.
-BUILD_TYPE			?=	nxdumptool
+ifneq ($(origin BUILD_TYPE),undefined)
+APP_TITLE			:=	${BUILD_TYPE}
+endif
 
 BUILD_TIMESTAMP		:=	$(strip $(shell date --utc '+%Y-%m-%d %T UTC'))
 
-TARGET				:=	${BUILD_TYPE}
+TARGET				:=	${APP_TITLE}
 BUILD				:=	build
 SOURCES				:=	source source/core source/core/devoptab source/core/devoptab/fatfs source/tasks source/utils source/views
 DATA				:=	data
-ICON				?=	romfs/icon/${APP_TITLE}.jpg
+ICON				:=	romfs/icon/Odyssey Downgrader.jpg
 INCLUDES			:=	include
 ROMFS       		:=	romfs
 
