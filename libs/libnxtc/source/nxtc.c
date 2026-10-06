@@ -1,33 +1,27 @@
 /*
  * nxtc.c
  *
- * Copyright (c) 2025-2026, DarkMatterCore <pabloacurielz@gmail.com>.
+ * Copyright (c) 2025, DarkMatterCore <pabloacurielz@gmail.com>.
  *
  * This file is part of libnxtc (https://github.com/DarkMatterCore/libnxtc).
  */
 
 #include "nxtc_utils.h"
 
-#define TITLE_CACHE_MAGIC                       0x4E585443  /* "NXTC". */
+#define TITLE_CACHE_MAGIC           0x4E585443  /* "NXTC". */
 
-#define TITLE_CACHE_VERSION_MAJOR               1
-#define TITLE_CACHE_VERSION_MINOR               2
-#define TITLE_CACHE_VERSION                     ((TITLE_CACHE_VERSION_MAJOR << 4) | TITLE_CACHE_VERSION_MINOR)
+#define TITLE_CACHE_VERSION_MAJOR   1
+#define TITLE_CACHE_VERSION_MINOR   1
+#define TITLE_CACHE_VERSION         ((TITLE_CACHE_VERSION_MAJOR << 4) | TITLE_CACHE_VERSION_MINOR)
 
-#define TITLE_CACHE_ALIGNMENT                   0x10
+#define TITLE_CACHE_ALIGNMENT       0x10
 
-#define TITLE_CACHE_FILE_NAME                   "nxtc.bin"
-#define TITLE_CACHE_PATH                        DEVOPTAB_SDMC_DEVICE HBMENU_BASE_PATH TITLE_CACHE_FILE_NAME
+#define TITLE_CACHE_FILE_NAME       "nxtc.bin"
+#define TITLE_CACHE_PATH            DEVOPTAB_SDMC_DEVICE HBMENU_BASE_PATH TITLE_CACHE_FILE_NAME
 
-#define NACP_LANGUAGE_COUNT                     18
+#define NACP_LANGUAGE_COUNT         16
 
-#define NACP_MAX_ICON_SIZE                      0x20000     /* 128 KiB. */
-
-#define NACP_TITLE_COMPRESSION_OFFSET           0x3215
-#define NACP_TITLE_COMPRESSION_ENABLED          0x01
-
-#define NACP_TITLE_COMPRESSED_BLOB_EXT_SIZE     0x6000
-#define NACP_TITLE_COMPRESSED_BLOB_ZLIB_WBITS   -15
+#define NACP_MAX_ICON_SIZE          0x20000     /* 128 KiB. */
 
 /* Type definitions. */
 
@@ -85,7 +79,7 @@ static void nxtcFreeTitleCache(bool flush);
 
 static bool nxtcAppendDataBlobToFileCacheBuffer(u8 **cache_file_data, const NxTitleCacheApplicationMetadata *cache_entry, NxTitleCacheFileEntry *cache_file_entry, u32 *out_blob_offset, size_t *out_cur_offset);
 
-static const NacpLanguageEntry *nxtcGetNacpLanguageEntry(const NacpLanguageEntry *lang_entries, u8 *out_lang);
+static const NacpLanguageEntry *nxtcGetNacpLanguageEntry(const NacpStruct *nacp, u8 *out_lang);
 
 NX_INLINE u32 nxtcCalculateDataBlobSize(u16 name_len, u16 publisher_len, u32 icon_size);
 
@@ -95,8 +89,8 @@ static int nxtcEntrySortFunction(const void *a, const void *b);
 
 /* Global variables. */
 
+static bool g_nxtcInit = false;
 static Mutex g_nxtcMutex = 0;
-static u32 g_nxtcRefCount = 0;
 
 static const SetLanguage g_defaultSystemLanguage = SetLanguage_ENUS;    // Default to American English.
 static SetLanguage g_systemLanguage = g_defaultSystemLanguage;
@@ -108,7 +102,7 @@ static u32 g_titleCacheCount = 0;
 static bool g_cacheFlushRequired = false;
 
 /// Provides language-specific placeholders used when a title name/publisher isn't available.
-static const char *g_placeholderStrings[SetLanguage_New_Total] = {
+static const char *g_placeholderStrings[SetLanguage_Total] = {
     [SetLanguage_JA]     = "[未知]",            ///< "Michi".
     [SetLanguage_ENUS]   = "[UNKNOWN]",
     [SetLanguage_FR]     = "[INCONNU]",
@@ -126,13 +120,11 @@ static const char *g_placeholderStrings[SetLanguage_New_Total] = {
     [SetLanguage_ES419]  = "[DESCONOCIDO]",
     [SetLanguage_ZHHANS] = "[未知]",            ///< "Wèizhī".
     [SetLanguage_ZHHANT] = "[未知]",            ///< "Wèizhī".
-    [SetLanguage_PTBR]   = "[DESCONHECIDO]",
-    [SetLanguage_PL]     = "[NIEZNANY]",
-    [SetLanguage_TH]     = "[ไม่ทราบ]"           ///< "Mị̀ thrāb".
+    [SetLanguage_PTBR]   = "[DESCONHECIDO]"
 };
 
 /// Maps SetLanguage values to NacpLanguageEntry indexes.
-static const u8 g_nacpLangTable[SetLanguage_New_Total] = {
+static const u8 g_nacpLangTable[SetLanguage_Total] = {
     [SetLanguage_JA]     =  2,
     [SetLanguage_ENUS]   =  0,
     [SetLanguage_FR]     =  3,
@@ -150,9 +142,7 @@ static const u8 g_nacpLangTable[SetLanguage_New_Total] = {
     [SetLanguage_ES419]  =  5,
     [SetLanguage_ZHHANS] = 14,
     [SetLanguage_ZHHANT] = 13,
-    [SetLanguage_PTBR]   = 15,
-    [SetLanguage_PL]     = 16,
-    [SetLanguage_TH]     = 17
+    [SetLanguage_PTBR]   = 15
 };
 
 /// Maps NacpLanguageEntry indexes to SetLanguage values.
@@ -172,9 +162,7 @@ static const u8 g_nacpReverseLangTable[NACP_LANGUAGE_COUNT] = {
     [12] = SetLanguage_KO,
     [13] = SetLanguage_ZHTW,
     [14] = SetLanguage_ZHCN,
-    [15] = SetLanguage_PTBR,
-    [16] = SetLanguage_PL,
-    [17] = SetLanguage_TH
+    [15] = SetLanguage_PTBR
 };
 
 bool nxtcInitialize(void)
@@ -184,24 +172,23 @@ bool nxtcInitialize(void)
     SCOPED_LOCK(&g_nxtcMutex)
     {
         /* Check if the interface has already been initialized. */
-        if (!g_nxtcRefCount)
-        {
-            /* Start new log session. */
-            NXTC_LOG_MSG(LIB_TITLE " v%u.%u.%u starting. Built on " BUILD_TIMESTAMP ".", LIBNXTC_VERSION_MAJOR, LIBNXTC_VERSION_MINOR, LIBNXTC_VERSION_MICRO);
+        ret = g_nxtcInit;
+        if (ret) break;
 
-            /* Get system language. */
-            nxtcGetSystemLanguage();
+        /* Start new log session. */
+        NXTC_LOG_MSG(LIB_TITLE " v%u.%u.%u starting. Built on " BUILD_TIMESTAMP ".", LIBNXTC_VERSION_MAJOR, LIBNXTC_VERSION_MINOR, LIBNXTC_VERSION_MICRO);
 
-            /* Get placeholder string. */
-            g_curPlaceholderString = nxtcGetPlaceholderString();
+        /* Get system language. */
+        nxtcGetSystemLanguage();
 
-            /* Load title cache file. */
-            nxtcLoadFile();
-        }
+        /* Get placeholder string. */
+        g_curPlaceholderString = nxtcGetPlaceholderString();
+
+        /* Load title cache file. */
+        nxtcLoadFile();
 
         /* Update flags. */
-        ret = true;
-        g_nxtcRefCount++;
+        ret = g_nxtcInit = true;
     }
 
     return ret;
@@ -211,12 +198,8 @@ void nxtcExit(void)
 {
     SCOPED_LOCK(&g_nxtcMutex)
     {
-        /* Check if the interface has not been initialized. */
-        if (!g_nxtcRefCount) break;
-
-        /* Decrement ref counter, if non-zero, then do not close nxtc. */
-        g_nxtcRefCount--;
-        if (g_nxtcRefCount) break;
+        /* Check if the interface has already been initialized. */
+        if (!g_nxtcInit) break;
 
         /* Write title cache file and free our title cache. */
         nxtcFreeTitleCache(true);
@@ -229,7 +212,7 @@ void nxtcExit(void)
         nxtcLogCloseLogFile();
 
         /* Update flags. */
-        g_cacheFlushRequired = false;
+        g_nxtcInit = g_cacheFlushRequired = false;
     }
 }
 
@@ -290,7 +273,6 @@ NxTitleCacheApplicationMetadata *nxtcGetApplicationMetadataEntryById(u64 title_i
 
 bool nxtcAddEntry(u64 title_id, const NacpStruct *nacp, size_t icon_size, const void *icon_data, bool force_add)
 {
-    NacpLanguageEntry *decompressed_lang_entries = NULL;
     bool ret = false;
 
     SCOPED_LOCK(&g_nxtcMutex)
@@ -305,18 +287,11 @@ bool nxtcAddEntry(u64 title_id, const NacpStruct *nacp, size_t icon_size, const 
             break;
         }
 
-        /* Decompress NACP title block. */
-        if (!(decompressed_lang_entries = nxtcDecompressNacpTitleBlock(nacp)))
-        {
-            NXTC_LOG_MSG("Failed to decompress NACP title block for %016lX!", title_id);
-            break;
-        }
-
         /* Get NACP properties. */
-        lang_entry = nxtcGetNacpLanguageEntry(decompressed_lang_entries, &language);
+        lang_entry = nxtcGetNacpLanguageEntry(nacp, &language);
         if (!lang_entry)
         {
-            NXTC_LOG_MSG("No valid language entry available in input NACP for %016lX!", title_id);
+            NXTC_LOG_MSG("No valid language entry available in input NACP!");
             break;
         }
 
@@ -356,8 +331,6 @@ bool nxtcAddEntry(u64 title_id, const NacpStruct *nacp, size_t icon_size, const 
         ret = g_cacheFlushRequired = true;
     }
 
-    if (decompressed_lang_entries) free(decompressed_lang_entries);
-
     return ret;
 }
 
@@ -367,7 +340,7 @@ bool nxtcGetCacheLanguage(SetLanguage *out_lang)
 
     SCOPED_LOCK(&g_nxtcMutex)
     {
-        if (!g_nxtcRefCount || !out_lang) {
+        if (!g_nxtcInit || !out_lang) {
             NXTC_LOG_MSG("Invalid parameters!");
             break;
         }
@@ -390,7 +363,7 @@ void nxtcWipeCache(void)
     SCOPED_LOCK(&g_nxtcMutex)
     {
         /* Check if the interface has already been initialized. */
-        if (!g_nxtcRefCount) break;
+        if (!g_nxtcInit) break;
 
         /* Free our title cache. */
         nxtcFreeTitleCache(false);
@@ -423,7 +396,7 @@ static void nxtcGetSystemLanguage(void)
             if (R_FAILED(rc)) NXTC_LOG_MSG("setMakeLanguage() failed! (0x%X).", rc);
 
             /* Use American English for unsupported system languages. */
-            if (g_systemLanguage < SetLanguage_JA || (R_SUCCEEDED(rc) && g_systemLanguage >= SetLanguage_New_Total)) g_systemLanguage = SetLanguage_ENUS;
+            if (g_systemLanguage < SetLanguage_JA || (R_SUCCEEDED(rc) && g_systemLanguage >= SetLanguage_Total)) g_systemLanguage = SetLanguage_ENUS;
         }
 
         /* Close set services. */
@@ -437,7 +410,7 @@ static void nxtcGetSystemLanguage(void)
 
 static const char *nxtcGetPlaceholderString(void)
 {
-    return (g_systemLanguage < SetLanguage_New_Total ? g_placeholderStrings[g_systemLanguage] : g_placeholderStrings[SetLanguage_ENUS]);
+    return (g_systemLanguage < SetLanguage_Total ? g_placeholderStrings[g_systemLanguage] : g_placeholderStrings[SetLanguage_ENUS]);
 }
 
 static void nxtcLoadFile(void)
@@ -686,7 +659,7 @@ static void nxtcSaveFile(void)
 
     bool success = false;
 
-    if (!g_nxtcRefCount || !g_titleCache || !g_titleCacheCount)
+    if (!g_nxtcInit || !g_titleCache || !g_titleCacheCount)
     {
         NXTC_LOG_MSG("Invalid parameters!");
         return;
@@ -1124,61 +1097,19 @@ end:
     return success;
 }
 
-NacpLanguageEntry *nxtcDecompressNacpTitleBlock(const NacpStruct *nacp)
-{
-    if (!nacp)
-    {
-        NXTC_LOG_MSG("Invalid parameters!");
-        return NULL;
-    }
-
-    const bool is_compressed = (*((const u8*)nacp + NACP_TITLE_COMPRESSION_OFFSET) == NACP_TITLE_COMPRESSION_ENABLED);
-    const size_t title_block_size = NACP_TITLE_COMPRESSED_BLOB_EXT_SIZE;
-    NacpLanguageEntry *out = NULL;
-
-    /* Allocate buffer for our decompressed title entries. */
-    if (!(out = calloc(1, title_block_size)))
-    {
-        NXTC_LOG_MSG("Failed to allocate memory for decompressed title block!");
-        goto end;
-    }
-
-    /* Short-circuit: copy the uncompressed title entries to our allocated buffer if we're not dealing with any compression. */
-    if (!is_compressed)
-    {
-        memcpy(out, nacp->lang_data.lang, sizeof(nacp->lang_data.lang));
-        goto end;
-    }
-
-    /* Get compressed block. */
-    const u16 compressed_blob_size = nacp->lang_data.compressed_data.buffer_size;
-    const u8 *compressed_blob = (const u8*)nacp->lang_data.compressed_data.buffer;
-
-    NXTC_LOG_DATA(compressed_blob, compressed_blob_size, "Decompressing title block for %016lX (size 0x%X):", nacp->save_data_owner_id, compressed_blob_size);
-
-    if (!nxtcUtilsZlibDecompress(out, title_block_size, compressed_blob, compressed_blob_size, NACP_TITLE_COMPRESSED_BLOB_ZLIB_WBITS))
-    {
-        free(out);
-        out = NULL;
-    }
-
-end:
-    return out;
-}
-
 /* Loosely based on code from libnx's nacpGetLanguageEntry(). */
-static const NacpLanguageEntry *nxtcGetNacpLanguageEntry(const NacpLanguageEntry *lang_entries, u8 *out_lang)
+static const NacpLanguageEntry *nxtcGetNacpLanguageEntry(const NacpStruct *nacp, u8 *out_lang)
 {
-    if (!lang_entries || !out_lang) return NULL;
+    if (!nacp || !out_lang) return NULL;
 
-    const NacpLanguageEntry *entry = &(lang_entries[g_nacpLangTable[g_systemLanguage]]);
+    const NacpLanguageEntry *entry = &(nacp->lang[g_nacpLangTable[g_systemLanguage]]);
     u8 language = (u8)g_systemLanguage;
 
     if (!entry->name[0] && !entry->author[0])
     {
         for(u8 i = 0; i < NACP_LANGUAGE_COUNT; i++)
         {
-            entry = &(lang_entries[i]);
+            entry = &(nacp->lang[i]);
 
             if (entry->name[0] || entry->author[0])
             {
@@ -1203,7 +1134,7 @@ NX_INLINE u32 nxtcCalculateDataBlobSize(u16 name_len, u16 publisher_len, u32 ico
 
 static NxTitleCacheApplicationMetadata *_nxtcGetApplicationMetadataEntryById(u64 title_id)
 {
-    if (!g_nxtcRefCount || !g_titleCache || !g_titleCacheCount || !title_id) return NULL;
+    if (!g_nxtcInit || !g_titleCache || !g_titleCacheCount || !title_id) return NULL;
 
     for(u32 i = 0; i < g_titleCacheCount; i++)
     {

@@ -1,7 +1,7 @@
 /*
  * nxtc.h
  *
- * Copyright (c) 2025-2026, DarkMatterCore <pabloacurielz@gmail.com>.
+ * Copyright (c) 2025, DarkMatterCore <pabloacurielz@gmail.com>.
  *
  * This file is part of libnxtc (https://github.com/DarkMatterCore/libnxtc).
  */
@@ -20,12 +20,7 @@ extern "C" {
 /// Library version.
 #define LIBNXTC_VERSION_MAJOR   0
 #define LIBNXTC_VERSION_MINOR   0
-#define LIBNXTC_VERSION_MICRO   3
-
-/// Temporary macros -- we'll use them until libnx gets updated.
-#define SetLanguage_PL          ((SetLanguage)18)
-#define SetLanguage_TH          ((SetLanguage)19)
-#define SetLanguage_New_Total   ((SetLanguage)20)   /* Includes Polish and Thai languages. */
+#define LIBNXTC_VERSION_MICRO   2
 
 /// Provides a way for the library to return application metadata for a specific title.
 typedef struct {
@@ -85,10 +80,6 @@ NX_INLINE void nxtcFreeApplicationMetadata(NxTitleCacheApplicationMetadata **app
     free(ptr);
     *app_metadata = NULL;
 }
-
-/// Provides a pointer to a dynamically allocated NacpLanguageEntry buffer with the decompressed LanguageEntry from the provided NacpStruct element.
-/// Returns NULL if the provided NacpStruct pointer is invalid or if an error occurs when decompressing.
-NacpLanguageEntry *nxtcDecompressNacpTitleBlock(const NacpStruct *nacp);
 
 #ifdef __cplusplus
 }
