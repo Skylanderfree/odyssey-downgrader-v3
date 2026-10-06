@@ -487,9 +487,6 @@ cleanup:
     if (buf) free(buf);
 
     if (app_metadata) free(app_metadata);
-
-    consolePrint("press any button to exit\n");
-    utilsWaitForButtonPress(0);
 }
 
 void do_add_patch() {
@@ -519,17 +516,13 @@ void do_add_patch() {
     fsFileClose(&f);
     consolePrint("done\n");
 end:
-    consolePrint("press any button to exit\n");
-    utilsWaitForButtonPress(0);
 }
 
 void do_add_downgrade_patch() {
     consoleClear();
 
-    // Add downgrade files
+    // Combine both actions
     do_add_downgrade();
-
-    // Add patch
     do_add_patch();
 
     consoleClear();
@@ -646,9 +639,9 @@ int main(int argc, char *argv[])
         printf("\n");
 
         if(status & STATUS_DOWNGRADE) {
-            printf(GREEN "Downgrade & Patch are already added.\n" RESET);
+            printf(GREEN "Downgrade is already added.\n" RESET);
         } else {
-            printf(RED "Downgrade & Patch are not added.\n" RESET);
+            printf(RED "Downgrade is not added.\n" RESET);
         }
 
         consoleUpdate(NULL);
