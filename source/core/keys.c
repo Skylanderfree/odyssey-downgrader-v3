@@ -721,7 +721,7 @@ static bool keysDeriveMasterKeys(void)
         if (!current_mkey_available)
         {
             LOG_MSG_ERROR("Looks like your current keys are outdated (%02X) please update your Lockpick_RCM\r\n" \
-                          "and try again (%02X). Please redump your console keys or dump your keys if you haven't\r\n" \
+                          "and try again (%02X). Please redump your console keys or dump your keys if you havent\r\n" \
                           "already. Check to see if your" APP_TITLE " is updated before trying again.\r\n" \
                           "If you're still having problems please go to:\r\n%s\r\n%s", \
                           g_atmosphereKeyGeneration, current_mkey_index, PRERELEASE_URL, DISCORD_SERVER_URL);
