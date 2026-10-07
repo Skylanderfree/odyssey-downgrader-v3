@@ -482,9 +482,10 @@ dump_start:
         goto dump_start;
     }
 
-    if(user_app_data.app_info->storage_id == NcmStorageId_GameCard)
-        consolePrint("if odyssey doesn't launch, reinsert your gamecard.\n");
-        success = true;
+    if(user_app_data.app_info->storage_id == NcmStorageId_GameCard) {
+       consolePrint("if odyssey doesn't launch, reinsert your gamecard.\n");
+    }
+    success = true;
 cleanup:
     if (base_nca_ctx) free(base_nca_ctx);
 
