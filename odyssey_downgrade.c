@@ -419,6 +419,9 @@ dump_start:
                 mutexLock(&g_fileMutex);
                 shared_data.transfer_cancelled = true;
                 mutexUnlock(&g_fileMutex);
+                //Wake these up so it doesn't freeze when holding B
+                condvarWakeAll(&g_readCondvar);
+                condvarWakeAll(&g_writeCondvar);
                 break;
             }
         } else {
