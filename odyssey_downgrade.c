@@ -189,7 +189,7 @@ static void read_thread_func(void *arg)
 
     /* Wait until the previous file data chunk has been written. */
     mutexLock(&g_fileMutex);
-    if (shared_data->data_size && !shared_data->write_error) condvarWait(&g_readCondvar, &g_fileMutex);
+    if (shared_data->data_size && !shared_data->write_error && !shared_data->transfer_cancelled) condvarWait(&g_readCondvar, &g_fileMutex);
     mutexUnlock(&g_fileMutex);
 
     if ((shared_data->read_error || shared_data->write_error || shared_data->transfer_cancelled) && *path) remove(path);
@@ -220,6 +220,8 @@ static void write_thread_func(void *arg)
         if (shared_data->read_error || shared_data->transfer_cancelled || !shared_data->fd)
         {
             mutexUnlock(&g_fileMutex);
+            shared_data->data_size = 0;
+            condvarWakeAll(&g_readCondvar)
             break;
         }
 
