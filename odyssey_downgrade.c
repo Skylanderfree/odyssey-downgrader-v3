@@ -531,19 +531,6 @@ void do_add_downgrade_patch() {
     utilsWaitForButtonPress(0);
 }
 
-void do_remove_downgrade_patch() {
-    consoleClear();
-    // Combine downgrade & patch remove action
-    // Combine both actions
-    do_remove_downgrade();
-    do_remove_patch();
-
-    consoleClear();
-    consolePrint("downgrade and patch added\n");
-    consolePrint("press any button to exit\n");
-    utilsWaitForButtonPress(0);
-}
-
 void do_remove_downgrade() {
     consoleClear();
     FsFileSystem* fs = utilsGetSdCardFileSystemObject();
@@ -577,6 +564,19 @@ void do_remove_patch() {
     }
     consolePrint("done\n");
 end:
+    consolePrint("press any button to exit\n");
+    utilsWaitForButtonPress(0);
+}
+
+void do_remove_downgrade_patch() {
+    consoleClear();
+    // Combine downgrade & patch remove action
+    // Combine both actions
+    do_remove_downgrade();
+    do_remove_patch();
+
+    consoleClear();
+    consolePrint("downgrade and patch removed\n");
     consolePrint("press any button to exit\n");
     utilsWaitForButtonPress(0);
 }
