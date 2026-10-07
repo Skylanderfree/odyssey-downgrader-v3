@@ -252,9 +252,10 @@ u8 get_program_id_offset(TitleInfo *info, u32 program_count)
 #define R_PATH_EXISTS (0x402)
 #define R_PATH_DOESNT_EXIST (0x202)
 
-void do_add_downgrade() {
+bool do_add_downgrade() {
     consoleClear();
 
+    bool success = false;
     u32 app_count = 0;
     TitleApplicationMetadata **app_metadata = NULL;
     TitleUserApplicationData user_app_data = {0};
@@ -483,7 +484,7 @@ dump_start:
 
     if(user_app_data.app_info->storage_id == NcmStorageId_GameCard)
         consolePrint("if odyssey doesn't launch, reinsert your gamecard.\n");
-
+        success = true;
 cleanup:
     if (base_nca_ctx) free(base_nca_ctx);
 
@@ -492,6 +493,8 @@ cleanup:
     if (buf) free(buf);
 
     if (app_metadata) free(app_metadata);
+
+    return success;
 }
 
 void do_add_patch() {
@@ -520,12 +523,19 @@ void do_add_patch() {
     }
     fsFileClose(&f);
 }
-
-void do_add_downgrade_patch() {
-    consoleClear();
     // Combine downgrade & patch add action
     // Combine both actions
-    do_add_downgrade();
+void do_add_downgrade_patch() {
+    consoleClear();
+    // If add_downgrade is canceled then add_patch is not called
+    if (!do_add_downgrade())
+    {
+        consoleClear();
+        consolePrint("downgrade cancelled\n");
+        consolePrint("press any button to exit\n");
+        utilsWaitForButtonPress(0);
+        return;
+    }
     do_add_patch();
 
     consoleClear();
@@ -561,11 +571,11 @@ void do_remove_patch() {
         return;
     }
 }
-
-void do_remove_downgrade_patch() {
-    consoleClear();
     // Combine downgrade & patch remove action
     // Combine both actions
+void do_remove_downgrade_patch() {
+    consoleClear();
+
     do_remove_downgrade();
     do_remove_patch();
 
