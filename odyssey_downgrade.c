@@ -520,10 +520,23 @@ end:
 
 void do_add_downgrade_patch() {
     consoleClear();
-
+    // Combine downgrade & patch add action
     // Combine both actions
     do_add_downgrade();
     do_add_patch();
+
+    consoleClear();
+    consolePrint("downgrade and patch added\n");
+    consolePrint("press any button to exit\n");
+    utilsWaitForButtonPress(0);
+}
+
+void do_remove_downgrade_patch() {
+    consoleClear();
+    // Combine downgrade & patch remove action
+    // Combine both actions
+    do_remove_downgrade();
+    do_remove_patch();
 
     consoleClear();
     consolePrint("downgrade and patch added\n");
@@ -622,7 +635,7 @@ int main(int argc, char *argv[])
 
     const void (*menu_funcs[MENU_COUNT])() = {
     do_add_downgrade_patch,
-    do_remove_downgrade,
+    do_remove_downgrade_patch,
     };
 
     status_t status = get_status();
