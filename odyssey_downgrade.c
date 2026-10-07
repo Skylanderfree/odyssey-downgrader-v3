@@ -514,8 +514,6 @@ void do_add_patch() {
         goto end;
     }
     fsFileClose(&f);
-    consolePrint("done\n");
-end:
 }
 
 void do_add_downgrade_patch() {
@@ -546,11 +544,6 @@ void do_remove_downgrade() {
         consolePrint("failed to delete exefs.nsp (%x)\n", r);
         goto end;
     }
-
-    consolePrint("done\n");
-end:
-    consolePrint("press any button to exit\n");
-    utilsWaitForButtonPress(0);
 }
 
 void do_remove_patch() {
@@ -562,10 +555,6 @@ void do_remove_patch() {
         consolePrint("failed to delete patch (%x)\n", r);
         goto end;
     }
-    consolePrint("done\n");
-end:
-    consolePrint("press any button to exit\n");
-    utilsWaitForButtonPress(0);
 }
 
 void do_remove_downgrade_patch() {
