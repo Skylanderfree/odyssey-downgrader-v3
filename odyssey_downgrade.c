@@ -497,21 +497,21 @@ void do_add_patch() {
     int r = fsFsCreateFile(fs, patch_path + sdmc_prefix_length, patch_data_size, 0);
     if(R_FAILED(r) && r != R_PATH_EXISTS) {
         consolePrint("failed to write patch (%x)\n", r);
-        goto end;
+        return;
     }
 
     FsFile f;
     r = fsFsOpenFile(fs, patch_path + sdmc_prefix_length, FsOpenMode_Write, &f);
     if(R_FAILED(r)) {
         consolePrint("failed to write patch (%x)\n", r);
-        goto end;
+        return;
     }
 
     r = fsFileWrite(&f, 0, patch_data, patch_data_size, FsWriteOption_Flush);
     if(R_FAILED(r)) {
         consolePrint("failed to write patch (%x)\n", r);
         fsFileClose(&f);
-        goto end;
+        return;
     }
     fsFileClose(&f);
 }
@@ -536,13 +536,13 @@ void do_remove_downgrade() {
     int r = fsFsDeleteFile(fs, romfs_path + sdmc_prefix_length);
     if(R_FAILED(r) && r != R_PATH_DOESNT_EXIST) {
         consolePrint("failed to delete romfs.bin (%x)\n", r);
-        goto end;
+        return;
     }
 
     r = fsFsDeleteFile(fs, exefs_path + sdmc_prefix_length);
     if(R_FAILED(r) && r != R_PATH_DOESNT_EXIST) {
         consolePrint("failed to delete exefs.nsp (%x)\n", r);
-        goto end;
+        return;
     }
 }
 
@@ -553,7 +553,7 @@ void do_remove_patch() {
     int r = fsFsDeleteFile(fs, patch_path + sdmc_prefix_length);
     if(R_FAILED(r) && r != R_PATH_DOESNT_EXIST) {
         consolePrint("failed to delete patch (%x)\n", r);
-        goto end;
+        return;
     }
 }
 
