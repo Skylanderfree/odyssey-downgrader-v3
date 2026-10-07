@@ -221,7 +221,7 @@ static void write_thread_func(void *arg)
         {
             mutexUnlock(&g_fileMutex);
             shared_data->data_size = 0;
-            condvarWakeAll(&g_readCondvar)
+            condvarWakeAll(&g_readCondvar);
             break;
         }
 
