@@ -616,8 +616,7 @@ void do_calculate_checksums() {
 consoleClear();
 
 int choice = 0;
-while (appletMainLoop())
-{
+while (appletMainLoop()) {
     consoleClear();
     consolePrint("calculate checksums\n\n");
     consolePrint("%s romfs.bin\n", choice == 0 ? "->" : "  ");
@@ -625,8 +624,7 @@ while (appletMainLoop())
     consolePrint("\npress A to select\n");
     consolePrint("press B to go back\n");
 
-    while (appletMainLoop())
-    {
+    while (appletMainLoop()) {
         utilsScanPads();
         u64 buttons = utilsGetButtonsDown();
         if (buttons & HidNpadButton_Up) {
@@ -667,6 +665,7 @@ while (appletMainLoop())
             return;
         }
     }
+}
 }
 
 void do_add_patch() {
