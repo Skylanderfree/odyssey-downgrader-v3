@@ -263,34 +263,19 @@ static bool calculate_sha256(const char *path, char *output)
     mbedtls_sha256_context ctx;
     mbedtls_sha256_init(&ctx);
 
-    if (mbedtls_sha256_starts(&ctx, 0) != 0)
-    {
-        mbedtls_sha256_free(&ctx);
-        fclose(file);
-        return false;
-    }
+    mbedtls_sha256_starts(&ctx, 0);
 
     u8 buffer[0x4000];
     size_t bytes_read;
 
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
     {
-        if (mbedtls_sha256_update(&ctx, buffer, bytes_read) != 0)
-        {
-            mbedtls_sha256_free(&ctx);
-            fclose(file);
-            return false;
-        }
+        mbedtls_sha256_update(&ctx, buffer, bytes_read);
     }
 
     u8 hash[32];
 
-    if (mbedtls_sha256_finish(&ctx, hash) != 0)
-    {
-        mbedtls_sha256_free(&ctx);
-        fclose(file);
-        return false;
-    }
+    mbedtls_sha256_finish(&ctx, hash);
 
     mbedtls_sha256_free(&ctx);
     fclose(file);
