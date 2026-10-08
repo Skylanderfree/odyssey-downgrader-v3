@@ -260,17 +260,39 @@ static bool calculate_sha256(const char *path, char *output)
     if (!file)
         return false;
 
+    fseek(file, 0, SEEK_END);
+    u64 total_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
     mbedtls_sha256_context ctx;
     mbedtls_sha256_init(&ctx);
-
     mbedtls_sha256_starts(&ctx, 0);
 
     u8 buffer[0x4000];
     size_t bytes_read;
+    u64 total_read = 0;
+    u8 last_percent = 255;
 
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
     {
+        utilsScanPads();
+
+        if (utilsGetButtonsHeld() & HidNpadButton_B)
+        {
+            mbedtls_sha256_free(&ctx);
+            fclose(file);
+
+            consolePrint("\n\nchecksum cancelled\n");
+            return false;
+        }
+
         mbedtls_sha256_update(&ctx, buffer, bytes_read);
+        total_read += bytes_read;
+        u8 percent = (u8)((total_read * 100) / total_size);
+        if (percent != last_percent)
+        {
+            consolePrint("\rchecksum progress: %u%%", percent);
+            last_percent = percent;
+        }
     }
 
     u8 hash[32];
@@ -284,6 +306,8 @@ static bool calculate_sha256(const char *path, char *output)
         sprintf(output + (i * 2), "%02x", hash[i]);
 
     output[64] = '\0';
+
+    consolePrint("\rchecksum progress: 100%%\n");
 
     return true;
 }
@@ -565,28 +589,38 @@ cleanup:
     return success;
 }
 
-void do_calculate_checksums() {
+void do_calculate_checksums()
+{
     consoleClear();
 
     char romfs_hash[65];
     char exefs_hash[65];
+    consolePrint("calculate checksums\n");
+    consolePrint("hold B to cancel\n\n");
 
-    consolePrint("calculating checksums...\n\n");
-    if (calculate_sha256(romfs_path, romfs_hash))
-    {
-    consolePrint("romfs.bin SHA-256:\n%s\n\n", romfs_hash);
+    consolePrint("romfs.bin:\n");
+
+    if (calculate_sha256(romfs_path, romfs_hash)) {
+        consolePrint("\nromfs.bin SHA-256:\n%s\n\n", romfs_hash);
+    }
+    else {
+        consolePrint("\nchecksum calculation cancelled or failed\n");
+        consolePrint("press any button to exit\n");
+        utilsWaitForButtonPress(0);
+        return;
+    }
+
+    consolePrint("exefs.nsp:\n");
+
+    if (calculate_sha256(exefs_path, exefs_hash)) {
+        consolePrint("\nexefs.nsp SHA-256:\n%s\n\n", exefs_hash);
     }
     else
     {
-    consolePrint("failed to calculate romfs.bin checksum\n\n");
-    }
-    if (calculate_sha256(exefs_path, exefs_hash))
-    {
-    consolePrint("exefs.nsp SHA-256:\n%s\n\n", exefs_hash);
-    }
-    else
-    {
-    consolePrint("failed to calculate exefs.nsp checksum\n\n");
+        consolePrint("\nchecksum calculation cancelled or failed\n");
+        consolePrint("press any button to exit\n");
+        utilsWaitForButtonPress(0);
+        return;
     }
     consolePrint("press any button to exit\n");
     utilsWaitForButtonPress(0);
