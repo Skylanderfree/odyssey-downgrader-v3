@@ -110,6 +110,13 @@ static void consolePrint(const char *text, ...)
     consoleUpdate(NULL);
 }
 
+static void consoleClear(void)
+{
+    printf("\033[2J");
+    printf("\033[H");
+    consoleUpdate(NULL);
+}
+
 static const char sdmc_prefix[] = "sdmc:";
 static const size_t sdmc_prefix_length = sizeof(sdmc_prefix) - 1;
 static const char romfs_path[] = "sdmc:/atmosphere/contents/0100000000010000/romfs.bin";
@@ -280,8 +287,7 @@ static bool calculate_sha256(const char *path, char *output)
         {
             mbedtls_sha256_free(&ctx);
             fclose(file);
-
-            consolePrint("\n\nchecksum cancelled\n");
+            consolePrint("\n\nchecking checksum is cancelled\n");
             return false;
         }
 
@@ -337,7 +343,7 @@ static bool check_sd_space(u64 required_size) {
     return true;
 }
 
-bool do_add_downgrade() {
+bool do_add_downgrade(DumpMode dump_mode) {
     consoleClear();
 
     bool success = false;
@@ -445,16 +451,33 @@ bool do_add_downgrade() {
     }
     consolePrint("exefs initialize ctx succeeded\n");
 
-    u64 required_space = romfs_ctx.size + exefs_ctx.size + patch_data_size;
+    u64 required_space = 0;
+
+    if (dump_mode != DUMP_EXEFS)
+    required_space += romfs_ctx.size;
+
+    if (dump_mode != DUMP_ROMFS)
+    required_space += exefs_ctx.size;
+
+    if (dump_mode == DUMP_BOTH)
+    required_space += patch_data_size;
+
     if (!check_sd_space(required_space))
     {
     goto cleanup;
     }
-
+    if (dump_mode == DUMP_EXEFS) {
+    shared_data.section_ctx = &(base_nca_ctx->fs_ctx[0]);
+    shared_data.total_offset = exefs_ctx.offset;
+    shared_data.total_size = exefs_ctx.size;
+    shared_data.mode = true;
+    }
+    else{
     shared_data.section_ctx = &(base_nca_ctx->fs_ctx[1]);
     shared_data.total_offset = romfs_ctx.offset;
     shared_data.total_size = romfs_ctx.size;
     shared_data.mode = false;
+    }
 
     shared_data.data = buf;
     shared_data.data_size = 0;
@@ -462,8 +485,9 @@ bool do_add_downgrade() {
 
     consolePrint("creating file...");
 
-    if(!utilsCreateConcatenationFile(romfs_path))
-    {
+    const char *output_path = shared_data.mode ? exefs_path : romfs_path;
+
+    if (!utilsCreateConcatenationFile(output_path)) {
         consolePrint("create concatenation file failed\n");
         goto cleanup;
     }
@@ -561,7 +585,7 @@ dump_start:
 
     consolePrint("process completed in %lu seconds\n", start);
 
-    if(shared_data.mode == false) {
+    if (dump_mode == DUMP_BOTH && shared_data.mode == false) {
         shared_data.section_ctx = &(base_nca_ctx->fs_ctx[0]);
         shared_data.total_offset = exefs_ctx.offset;
         shared_data.total_size = exefs_ctx.size;
@@ -589,26 +613,65 @@ cleanup:
     return success;
 }
 
-void do_calculate_checksums()
+void do_calculate_checksums() {
+consoleClear();
+
+int choice = 0;
+while (appletMainLoop())
 {
     consoleClear();
+    consolePrint("calculate checksums\n\n");
+    consolePrint("%s romfs.bin\n", choice == 0 ? "->" : "  ");
+    consolePrint("%s exefs.nsp\n", choice == 1 ? "->" : "  ");
+    consolePrint("\npress A to select\n");
+    consolePrint("press B to go back\n");
 
-    char romfs_hash[65];
-    char exefs_hash[65];
-    consolePrint("calculate checksums\n");
-    consolePrint("hold B to cancel\n\n");
-
-    consolePrint("romfs.bin:\n");
-
-    if (calculate_sha256(romfs_path, romfs_hash)) {
-        consolePrint("\nromfs.bin SHA-256:\n%s\n\n", romfs_hash);
+    while (appletMainLoop())
+    {
+        utilsScanPads();
+        u64 buttons = utilsGetButtonsDown();
+        if (buttons & HidNpadButton_Up) {
+            choice = 0;
+            break;
+        }
+        if (buttons & HidNpadButton_Down) {
+            choice = 1;
+            break;
+        }
+        if (buttons & HidNpadButton_B) {
+            return;
+        }
+        if (buttons & HidNpadButton_A) {
+            char hash[65];
+            const char* path;
+            const char* name;
+            if (choice == 0) {
+                path = romfs_path;
+                name = "romfs.bin";
+            }
+            else {
+                path = exefs_path;
+                name = "exefs.nsp";
+            }
+            consoleClear();
+            consolePrint("calculate checksums\n");
+            consolePrint("hold B to cancel\n\n");
+            consolePrint("%s:\n", name);
+            if (calculate_sha256(path, hash)) {
+                consolePrint("\n%s SHA-256:\n%s\n\n", name, hash);
+            }
+            else {
+                consolePrint("\nchecksum has been cancelled\n");
+            }
+            consolePrint("press any button to exit\n");
+            utilsWaitForButtonPress(0);
+            return;
+        }
     }
-    else {
-        consolePrint("\nchecksum calculation cancelled or failed\n");
-        consolePrint("press any button to exit\n");
-        utilsWaitForButtonPress(0);
-        return;
-    }
+}
+
+}
+
 
     consolePrint("exefs.nsp:\n");
 
@@ -652,13 +715,43 @@ void do_add_patch() {
     }
     fsFileClose(&f);
 }
+
+    void do_make_romfs(void) {
+    consoleClear();
+
+    if (do_add_downgrade(DUMP_ROMFS))
+        consolePrint("romfs.bin has been created successfully\n");
+    else
+        consolePrint("creating romfs.bin has failed or cancelled\n");
+
+    consolePrint("press any button to exit\n");
+    utilsWaitForButtonPress(0);
+}
+
+    void do_make_exefs(void) {
+    consoleClear();
+
+    if (do_add_downgrade(DUMP_EXEFS))
+        consolePrint("exefs.nsp has been created successfully\n");
+    else
+        consolePrint("creating exefs.nsp has failed or cancelled\n");
+
+    consolePrint("press any button to exit\n");
+    utilsWaitForButtonPress(0);
+}
+
+typedef enum {
+    DUMP_ROMFS,
+    DUMP_EXEFS,
+    DUMP_BOTH
+} DumpMode;
+
     // Combine downgrade & patch add action
     // Combine both actions
 void do_add_downgrade_patch() {
     consoleClear();
     // If add_downgrade is cancelled then add_patch is not called
-    if (!do_add_downgrade())
-    {
+    if (!do_add_downgrade(DUMP_BOTH)) {
         consoleClear();
         consolePrint("downgrade and patch have been cancelled\n");
         consolePrint("press any button to exit\n");
@@ -759,18 +852,22 @@ int main(int argc, char *argv[])
     bool applet_status;
     int selected_idx = 0;
 
-    #define MENU_COUNT (3)
+    #define MENU_COUNT (5)
 
     const char* menu_names[MENU_COUNT] = {
+    "Create romfs.bin"
+    "Create exefs.bin"
+    "Calculate checksums"
     "Apply downgrade",
     "Remove downgrade",
-    "Calculate checksums"
     };
 
     const void (*menu_funcs[MENU_COUNT])() = {
+    do_make_romfs,
+    do_make_exefs,
+    do_calculate_checksums,
     do_add_downgrade_patch,
     do_remove_downgrade_patch,
-    do_calculate_checksums,
     };
 
     status_t status = get_status();
