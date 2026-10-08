@@ -252,6 +252,31 @@ u8 get_program_id_offset(TitleInfo *info, u32 program_count)
 #define R_PATH_EXISTS (0x402)
 #define R_PATH_DOESNT_EXIST (0x202)
 
+static bool check_sd_space(u64 required_size) {
+
+    FsFileSystem *fs = utilsGetSdCardFileSystemObject();
+    u64 free_space = 0;
+    int r = fsFsGetFreeSpace(fs, "/", &free_space);
+
+    if (R_FAILED(r))
+    {
+        consolePrint("failed to check SD card space (%x)\n", r);
+        return false;
+    }
+
+    double required_gb = (double)required_size / (1024.0 * 1024.0 * 1024.0);
+    double free_gb = (double)free_space / (1024.0 * 1024.0 * 1024.0);
+
+    if (free_space < required_size)
+    {
+        consolePrint("not enough space on SD card\n");
+        consolePrint("required: %.2f GB\n", required_gb);
+        consolePrint("available: %.2f GB\n", free_gb);
+        return false;
+    }
+    return true;
+}
+
 bool do_add_downgrade() {
     consoleClear();
 
@@ -359,6 +384,12 @@ bool do_add_downgrade() {
         goto cleanup;
     }
     consolePrint("exefs initialize ctx succeeded\n");
+
+    u64 required_space = romfs_ctx.size + exefs_ctx.size + patch_data_size;
+    if (!check_sd_space(required_space))
+    {
+    goto cleanup;
+    }
 
     shared_data.section_ctx = &(base_nca_ctx->fs_ctx[1]);
     shared_data.total_offset = romfs_ctx.offset;
@@ -528,11 +559,11 @@ void do_add_patch() {
     // Combine both actions
 void do_add_downgrade_patch() {
     consoleClear();
-    // If add_downgrade is canceled then add_patch is not called
+    // If add_downgrade is cancelled then add_patch is not called
     if (!do_add_downgrade())
     {
         consoleClear();
-        consolePrint("downgrade cancelled\n");
+        consolePrint("downgrade and patch have been cancelled\n");
         consolePrint("press any button to exit\n");
         utilsWaitForButtonPress(0);
         return;
@@ -540,7 +571,7 @@ void do_add_downgrade_patch() {
     do_add_patch();
 
     consoleClear();
-    consolePrint("downgrade and patch added\n");
+    consolePrint("downgrade and patch have been added\n");
     consolePrint("press any button to exit\n");
     utilsWaitForButtonPress(0);
 }
@@ -648,7 +679,7 @@ int main(int argc, char *argv[])
     while((applet_status = appletMainLoop()))
     {
         consoleClear();
-        printf("odyssey downgrade\npress b to exit.\n\n");
+        printf("odyssey downgrade\npress + to exit.\n\n");
 
         for(u32 i = 0; i < MENU_COUNT; i++)
         {
@@ -708,7 +739,7 @@ int main(int argc, char *argv[])
                 }
             }
         } else
-        if (btn_down & HidNpadButton_B)
+        if (btn_down & HidNpadButton_Plus)
         {
             break;
         }
