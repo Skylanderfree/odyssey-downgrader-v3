@@ -255,7 +255,7 @@ u8 get_program_id_offset(TitleInfo *info, u32 program_count)
 static bool check_sd_space(u64 required_size) {
 
     FsFileSystem *fs = utilsGetSdCardFileSystemObject();
-    u64 free_space = 0;
+    s64 free_space = 0;
     int r = fsFsGetFreeSpace(fs, "/", &free_space);
 
     if (R_FAILED(r))
@@ -267,7 +267,7 @@ static bool check_sd_space(u64 required_size) {
     double required_gb = (double)required_size / (1024.0 * 1024.0 * 1024.0);
     double free_gb = (double)free_space / (1024.0 * 1024.0 * 1024.0);
 
-    if (free_space < required_size)
+    if (free_space < (s64)required_size)
     {
         consolePrint("not enough space on SD card\n");
         consolePrint("required: %.2f GB\n", required_gb);
