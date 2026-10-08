@@ -669,22 +669,6 @@ while (appletMainLoop())
     }
 }
 
-    consolePrint("exefs.nsp:\n");
-
-    if (do_calculate_checksums(exefs_path, exefs_hash)) {
-        consolePrint("\nexefs.nsp SHA-256:\n%s\n\n", exefs_hash);
-    }
-    else
-    {
-        consolePrint("\nchecksum calculation cancelled or failed\n");
-        consolePrint("press any button to exit\n");
-        utilsWaitForButtonPress(0);
-        return;
-    }
-    consolePrint("press any button to exit\n");
-    utilsWaitForButtonPress(0);
-}
-
 void do_add_patch() {
     consoleClear();
     FsFileSystem* fs = utilsGetSdCardFileSystemObject();
@@ -845,9 +829,9 @@ int main(int argc, char *argv[])
     #define MENU_COUNT (5)
 
     const char* menu_names[MENU_COUNT] = {
-    "Create romfs.bin"
-    "Create exefs.bin"
-    "Calculate checksums"
+    "Create romfs.bin",
+    "Create exefs.bin",
+    "Calculate checksums",
     "Apply downgrade",
     "Remove downgrade",
     };
