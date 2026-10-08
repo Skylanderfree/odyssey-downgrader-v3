@@ -671,7 +671,7 @@ while (appletMainLoop())
 
     consolePrint("exefs.nsp:\n");
 
-    if (calculate_sha256(exefs_path, exefs_hash)) {
+    if (do_calculate_checksums(exefs_path, exefs_hash)) {
         consolePrint("\nexefs.nsp SHA-256:\n%s\n\n", exefs_hash);
     }
     else
