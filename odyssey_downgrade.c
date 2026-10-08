@@ -110,13 +110,6 @@ static void consolePrint(const char *text, ...)
     consoleUpdate(NULL);
 }
 
-static void consoleClear(void)
-{
-    printf("\033[2J");
-    printf("\033[H");
-    consoleUpdate(NULL);
-}
-
 static const char sdmc_prefix[] = "sdmc:";
 static const size_t sdmc_prefix_length = sizeof(sdmc_prefix) - 1;
 static const char romfs_path[] = "sdmc:/atmosphere/contents/0100000000010000/romfs.bin";
@@ -342,6 +335,12 @@ static bool check_sd_space(u64 required_size) {
     }
     return true;
 }
+    typedef enum {
+    DUMP_ROMFS,
+    DUMP_EXEFS,
+    DUMP_BOTH
+} 
+DumpMode;
 
 bool do_add_downgrade(DumpMode dump_mode) {
     consoleClear();
@@ -670,9 +669,6 @@ while (appletMainLoop())
     }
 }
 
-}
-
-
     consolePrint("exefs.nsp:\n");
 
     if (calculate_sha256(exefs_path, exefs_hash)) {
@@ -739,12 +735,6 @@ void do_add_patch() {
     consolePrint("press any button to exit\n");
     utilsWaitForButtonPress(0);
 }
-
-typedef enum {
-    DUMP_ROMFS,
-    DUMP_EXEFS,
-    DUMP_BOTH
-} DumpMode;
 
     // Combine downgrade & patch add action
     // Combine both actions
