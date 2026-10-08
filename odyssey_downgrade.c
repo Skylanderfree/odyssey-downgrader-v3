@@ -19,6 +19,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <mbedtls/sha256.h>
 #include <core/nxdt_utils.h>
 #include <core/bktr.h>
 #include <core/gamecard.h>
@@ -251,6 +252,56 @@ u8 get_program_id_offset(TitleInfo *info, u32 program_count)
 
 #define R_PATH_EXISTS (0x402)
 #define R_PATH_DOESNT_EXIST (0x202)
+
+static bool calculate_sha256(const char *path, char *output)
+{
+    FILE *file = fopen(path, "rb");
+
+    if (!file)
+        return false;
+
+    mbedtls_sha256_context ctx;
+    mbedtls_sha256_init(&ctx);
+
+    if (mbedtls_sha256_starts(&ctx, 0) != 0)
+    {
+        mbedtls_sha256_free(&ctx);
+        fclose(file);
+        return false;
+    }
+
+    u8 buffer[0x4000];
+    size_t bytes_read;
+
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
+    {
+        if (mbedtls_sha256_update(&ctx, buffer, bytes_read) != 0)
+        {
+            mbedtls_sha256_free(&ctx);
+            fclose(file);
+            return false;
+        }
+    }
+
+    u8 hash[32];
+
+    if (mbedtls_sha256_finish(&ctx, hash) != 0)
+    {
+        mbedtls_sha256_free(&ctx);
+        fclose(file);
+        return false;
+    }
+
+    mbedtls_sha256_free(&ctx);
+    fclose(file);
+
+    for (int i = 0; i < 32; i++)
+        sprintf(output + (i * 2), "%02x", hash[i]);
+
+    output[64] = '\0';
+
+    return true;
+}
 
 static bool check_sd_space(u64 required_size) {
 
@@ -529,6 +580,33 @@ cleanup:
     return success;
 }
 
+void do_calculate_checksums() {
+    consoleClear();
+
+    char romfs_hash[65];
+    char exefs_hash[65];
+
+    consolePrint("calculating checksums...\n\n");
+    if (calculate_sha256(romfs_path, romfs_hash))
+    {
+    consolePrint("romfs.bin SHA-256:\n%s\n\n", romfs_hash);
+    }
+    else
+    {
+    consolePrint("failed to calculate romfs.bin checksum\n\n");
+    }
+    if (calculate_sha256(exefs_path, exefs_hash))
+    {
+    consolePrint("exefs.nsp SHA-256:\n%s\n\n", exefs_hash);
+    }
+    else
+    {
+    consolePrint("failed to calculate exefs.nsp checksum\n\n");
+    }
+    consolePrint("press any button to exit\n");
+    utilsWaitForButtonPress(0);
+}
+
 void do_add_patch() {
     consoleClear();
     FsFileSystem* fs = utilsGetSdCardFileSystemObject();
@@ -662,16 +740,18 @@ int main(int argc, char *argv[])
     bool applet_status;
     int selected_idx = 0;
 
-    #define MENU_COUNT (2)
+    #define MENU_COUNT (3)
 
     const char* menu_names[MENU_COUNT] = {
     "Apply downgrade",
     "Remove downgrade",
+    "Calculate checksums"
     };
 
     const void (*menu_funcs[MENU_COUNT])() = {
     do_add_downgrade_patch,
     do_remove_downgrade_patch,
+    do_calculate_checksums,
     };
 
     status_t status = get_status();
