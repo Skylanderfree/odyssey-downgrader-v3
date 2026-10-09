@@ -627,11 +627,11 @@ while (appletMainLoop()) {
     while (appletMainLoop()) {
         utilsScanPads();
         u64 buttons = utilsGetButtonsDown();
-        if (buttons & HidNpadButton_Up) {
+        if ((buttons & HidNpadButton_Up) || (held & (HidNpadButton_StickLUp | HidNpadButton_StickRUp))) {
             choice = 0;
             break;
         }
-        if (buttons & HidNpadButton_Down) {
+        if ((buttons & HidNpadButton_Down) || (held & (HidNpadButton_StickLDown | HidNpadButton_StickRDown))) {
             choice = 1;
             break;
         }
