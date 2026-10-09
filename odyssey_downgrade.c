@@ -831,7 +831,7 @@ int main(int argc, char *argv[])
 
     const char* menu_names[MENU_COUNT] = {
     "Create romfs.bin",
-    "Create exefs.bin",
+    "Create exefs.nsp",
     "Calculate checksums",
     "Apply downgrade",
     "Remove downgrade",
