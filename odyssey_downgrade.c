@@ -623,10 +623,12 @@ while (appletMainLoop()) {
     consolePrint("%s exefs.nsp\n", choice == 1 ? "->" : "  ");
     consolePrint("\npress A to select\n");
     consolePrint("press B to go back\n");
+    u64 held = 0;
 
     while (appletMainLoop()) {
         utilsScanPads();
         u64 buttons = utilsGetButtonsDown();
+        held = utilsGetButtonsHeld();
         if ((buttons & HidNpadButton_Up) || (held & (HidNpadButton_StickLUp | HidNpadButton_StickRUp))) {
             choice = 0;
             break;
