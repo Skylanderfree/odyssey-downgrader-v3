@@ -449,7 +449,7 @@ dump_start:
 
     utilsSetLongRunningProcessState(true);
 
-    consolePrint("hold b to cancel\n\n");
+    consolePrint(BOLDYELLOW "hold b to cancel\n\n" RESET);
 
     time_t start = time(NULL);
     while(shared_data.data_written < shared_data.total_size)
@@ -529,7 +529,7 @@ dump_start:
 
     if (shared_data.transfer_cancelled)
     {
-        consolePrint("process cancelled\n");
+        consolePrint(RED "process cancelled\n" RESET);
         goto cleanup;
     }
 
@@ -595,7 +595,7 @@ void do_add_downgrade_patch() {
     // If downgrade is cancelled then patch is not applied
     if (!do_add_downgrade())
     {
-        consolePrint("downgrade and patch have been cancelled\n");
+        consolePrint(YELLOW "downgrade and patch have been cancelled\n" RESET);
         consolePrint("press any button to exit\n");
         utilsWaitForButtonPress(0);
         return;
@@ -603,7 +603,7 @@ void do_add_downgrade_patch() {
     do_add_patch();
 
     consoleClear();
-    consolePrint("downgrade and patch have been added\n");
+    consolePrint(GREEN "downgrade and patch have been added\n" RESET);
     consolePrint("press any button to exit\n");
     utilsWaitForButtonPress(0);
 }
