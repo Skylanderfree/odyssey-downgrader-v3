@@ -266,6 +266,9 @@ void utilsCloseResources(void)
 {
     SCOPED_LOCK(&g_resourcesMutex)
     {
+    //This should prevent crashes when in title takeover
+    bisStorageExit();
+    devoptabUnmountAllDevices();
         LOG_MSG_INFO("Shutting down...");
 
         /* Close eMMC BIS storage interface. */

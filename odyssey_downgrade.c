@@ -359,7 +359,9 @@ bool do_add_downgrade() {
     }
 
     if(!titleGetUserApplicationData(app_metadata[odysseyIdx]->title_id, &user_app_data) || !user_app_data.app_info) {
-        consolePrint(YELLOW "Looks like odyssey is not detected make sure that you have it installed or gamecard inserted\n" RESET);
+        consolePrint(YELLOW "Looks like odyssey is not detected\n" RESET);
+        consolePrint(YELLOW "make sure that you have it installed or gamecard inserted\n" RESET);
+
 
         goto cleanup;
     }
