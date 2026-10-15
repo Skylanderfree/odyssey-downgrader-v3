@@ -106,8 +106,23 @@ static void consolePrint(const char *text, ...)
     va_start(v, text);
     vfprintf(stdout, text, v);
     va_end(v);
+    fflush(stdout);
     consoleUpdate(NULL);
 }
+
+// making my own consoleClear since libnx removed it
+static void utilsConsoleClear(void)
+{
+    printf("\x1b[2J\x1b[H");
+    fflush(stdout);
+    consoleUpdate(NULL);
+}
+
+// Redirect all consoleClear() to this implementation.
+#ifdef consoleClear
+#undef consoleClear
+#endif
+#define consoleClear() utilsConsoleClear()
 
 static const char sdmc_prefix[] = "sdmc:";
 static const size_t sdmc_prefix_length = sizeof(sdmc_prefix) - 1;
@@ -427,7 +442,6 @@ dump_start:
     consolePrint("hold b to cancel\n\n");
 
     time_t start = time(NULL);
-
     while(shared_data.data_written < shared_data.total_size)
     {
         if (shared_data.read_error || shared_data.write_error) break;
@@ -472,6 +486,7 @@ dump_start:
         prev_size = size;
 
         printf("%lu / %lu (%u%%) | Time elapsed: %lu\n", size, shared_data.total_size, percent, (now - start));
+        fflush(stdout);
         consoleUpdate(NULL);
     }
 
@@ -693,6 +708,7 @@ int main(int argc, char *argv[])
             printf(RED "Downgrade is not added.\n" RESET);
         }
 
+        fflush(stdout);
         consoleUpdate(NULL);
 
         u64 btn_down = 0, btn_held = 0;
