@@ -359,7 +359,8 @@ bool do_add_downgrade() {
     }
 
     if(!titleGetUserApplicationData(app_metadata[odysseyIdx]->title_id, &user_app_data) || !user_app_data.app_info) {
-        consolePrint("Odyssey seems to not be fully installed, missing your gamecard?\n");
+        consolePrint(YELLOW "Looks like odyssey is not detected make sure that you have it installed or gamecard inserted\n" RESET);
+
         goto cleanup;
     }
 
@@ -452,7 +453,16 @@ dump_start:
     while(shared_data.data_written < shared_data.total_size)
     {
         if (shared_data.read_error || shared_data.write_error) break;
-
+        //see if this can prevent crashes when pressing HOME for applet and title takeover
+        if (!appletMainLoop())
+        {
+            mutexLock(&g_fileMutex);
+            shared_data.transfer_cancelled = true;
+            mutexUnlock(&g_fileMutex);
+            condvarWakeAll(&g_readCondvar);
+            condvarWakeAll(&g_writeCondvar);
+            break;
+        }
         struct tm ts = {0};
         time_t now = time(NULL);
         localtime_r(&now, &ts);
@@ -577,14 +587,12 @@ void do_add_patch() {
     }
     fsFileClose(&f);
 }
-    // Combine downgrade & patch add action
-    // Combine both actions
+    // Combine downgrade & patch into one action
 void do_add_downgrade_patch() {
     consoleClear();
-    // If add_downgrade is cancelled then add_patch is not called
+    // If downgrade is cancelled then patch is not applied
     if (!do_add_downgrade())
     {
-        consoleClear();
         consolePrint("downgrade and patch have been cancelled\n");
         consolePrint("press any button to exit\n");
         utilsWaitForButtonPress(0);
@@ -625,8 +633,7 @@ void do_remove_patch() {
         return;
     }
 }
-    // Combine downgrade & patch remove action
-    // Combine both actions
+    // Combine both actions to remove downgrade & patch
 void do_remove_downgrade_patch() {
     consoleClear();
 
