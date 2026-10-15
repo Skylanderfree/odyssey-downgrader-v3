@@ -124,6 +124,13 @@ static void utilsConsoleClear(void)
 #endif
 #define consoleClear() utilsConsoleClear()
 
+// Prevent flickering when in menu or selecting an option
+static void utilsConsoleClearNoUpdate(void)
+{
+    printf("\x1b[2J\x1b[H");
+    fflush(stdout);
+}
+
 static const char sdmc_prefix[] = "sdmc:";
 static const size_t sdmc_prefix_length = sizeof(sdmc_prefix) - 1;
 static const char romfs_path[] = "sdmc:/atmosphere/contents/0100000000010000/romfs.bin";
@@ -693,7 +700,7 @@ int main(int argc, char *argv[])
 
     while((applet_status = appletMainLoop()))
     {
-        consoleClear();
+        utilsConsoleClearNoUpdate();
         printf("odyssey downgrade\npress + to exit.\n\n");
 
         for(u32 i = 0; i < MENU_COUNT; i++)
