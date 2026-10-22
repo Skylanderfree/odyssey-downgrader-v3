@@ -291,7 +291,7 @@ static bool check_sd_space(u64 required_size) {
 
     if (free_space < (s64)required_size)
     {
-        consolePrint("not enough space on SD card\n");
+        consolePrint(BOLDYELLOW "not enough space on SD card\n" RESET);
         consolePrint("required: %.2f GB\n", required_gb);
         consolePrint("available: %.2f GB\n", free_gb);
         return false;
@@ -354,13 +354,13 @@ bool do_add_downgrade() {
     }
 
     if(odysseyIdx == -1) {
-        consolePrint("Failed to find odyssey installed.\n");
+        consolePrint(BOLDRED "Failed to find odyssey installed.\n" RESET);
         goto cleanup;
     }
 
     if(!titleGetUserApplicationData(app_metadata[odysseyIdx]->title_id, &user_app_data) || !user_app_data.app_info) {
-        consolePrint(YELLOW "Looks like odyssey is not detected\n" RESET);
-        consolePrint(YELLOW "make sure that you have it installed or gamecard inserted\n" RESET);
+        consolePrint(BOLDYELLOW "Looks like odyssey is not detected\n" RESET);
+        consolePrint(BOLDYELLOW "make sure that you have it installed or gamecard inserted\n" RESET);
 
 
         goto cleanup;
@@ -529,7 +529,7 @@ dump_start:
 
     if (shared_data.transfer_cancelled)
     {
-        consolePrint(RED "process cancelled\n" RESET);
+        consolePrint(BOLDRED "process cancelled\n" RESET);
         goto cleanup;
     }
 
@@ -548,7 +548,7 @@ dump_start:
     }
 
     if(user_app_data.app_info->storage_id == NcmStorageId_GameCard) {
-       consolePrint("if odyssey doesn't launch, reinsert your gamecard.\n");
+       consolePrint(BOLDYELLOW "if odyssey doesn't launch, reinsert your gamecard.\n" RESET);
     }
     success = true;
 cleanup:
@@ -595,7 +595,7 @@ void do_add_downgrade_patch() {
     // If downgrade is cancelled then patch is not applied
     if (!do_add_downgrade())
     {
-        consolePrint(YELLOW "downgrade and patch have been cancelled\n" RESET);
+        consolePrint(BOLDRED "downgrade and patch have been cancelled\n" RESET);
         consolePrint("press any button to exit\n");
         utilsWaitForButtonPress(0);
         return;
@@ -603,7 +603,7 @@ void do_add_downgrade_patch() {
     do_add_patch();
 
     consoleClear();
-    consolePrint(GREEN "downgrade and patch have been added\n" RESET);
+    consolePrint(BOLDGREEN "downgrade and patch have been added\n" RESET);
     consolePrint("press any button to exit\n");
     utilsWaitForButtonPress(0);
 }
@@ -719,9 +719,9 @@ int main(int argc, char *argv[])
         printf("\n");
 
         if(status & STATUS_DOWNGRADE) {
-            printf(GREEN "Downgrade is already added.\n" RESET);
+            printf(BOLDGREEN "Downgrade is already added.\n" RESET);
         } else {
-            printf(RED "Downgrade is not added.\n" RESET);
+            printf(BOLDRED "Downgrade is not added.\n" RESET);
         }
 
         fflush(stdout);
