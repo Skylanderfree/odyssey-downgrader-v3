@@ -46,6 +46,8 @@
 #define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
 
 #define BLOCK_SIZE  USB_TRANSFER_BUFFER_SIZE
+#define R_PATH_EXISTS (0x402)
+#define R_PATH_DOESNT_EXIST (0x202)
 
 bool g_borealisInitialized = false;
 
@@ -145,77 +147,123 @@ static const u8 patch_data[] = {
 
 static const size_t patch_data_size = sizeof(patch_data);
 
+/*
+ * Removes a file from the SD card no matter how it was created:
+ *  FAT32: big files are ConcatenationFiles (a directory with the archive bit set).
+ *  exFAT / small files: regular files.
+ * Returns 0 if the file is gone (or never existed), or the libnx result code otherwise.
+ */
+static int remove_sd_file_any(const char *path)
+{
+    FsFileSystem *fs = utilsGetSdCardFileSystemObject();
+
+    // Handles ConcatenationFiles if the path doesn't exist or is a regular file
+    utilsRemoveConcatenationFile(path);
+
+    // Handles regular files
+    int r = fsFsDeleteFile(fs, path + sdmc_prefix_length);
+    if (R_FAILED(r) && r != R_PATH_DOESNT_EXIST) {
+        // checks for any leftover files just in case
+        int r2 = fsFsDeleteDirectoryRecursively(fs, path + sdmc_prefix_length);
+        if (R_SUCCEEDED(r2)) r = 0; } \
+    else
+    if (r == R_PATH_DOESNT_EXIST) {
+        r = 0; }
+    utilsCommitSdCardFileSystemChanges();
+    return r;
+}
+
 static void read_thread_func(void *arg)
 {
     ThreadSharedData *shared_data = (ThreadSharedData*)arg;
+    u8 *buf = NULL;
+    const char *path = NULL;
+
     if (!shared_data || !shared_data->data || !shared_data->total_size || (!shared_data->section_ctx))
     {
-        shared_data->read_error = true;
+        if (shared_data) shared_data->read_error = true;
         goto end;
     }
 
-    u8 *buf = malloc(BLOCK_SIZE);
+    buf = malloc(BLOCK_SIZE);
     if (!buf)
     {
         shared_data->read_error = true;
         goto end;
     }
 
-    /* Open file. */
-    const char* path = shared_data->mode ? exefs_path : romfs_path;
+    path = shared_data->mode ? exefs_path : romfs_path;
+
+    // Use the same approach as nxdumptool to only use the ConcatenationFile if the file is bigger than the FAT32 limit
+    // exFAT the file system driver doesn't need it, and on FAT32 it is required
+    if (shared_data->total_size > FAT32_FILESIZE_LIMIT)
+    {
+        // Make sure there are no leftover files from a previous attempt
+        remove_sd_file_any(path);
+
+        if (!utilsCreateConcatenationFile(path))
+        {
+            consolePrint("create concatenation file failed\n");
+            shared_data->read_error = true;
+            condvarWakeAll(&g_writeCondvar);
+            goto cleanup;
+        }
+    } else {
+        // Small file: make sure don't write over a leftover directory/file
+        remove_sd_file_any(path);
+    }
+
+    /* Open file */
     shared_data->read_error = ((shared_data->fd = fopen(path, "wb")) == NULL);
     if (shared_data->read_error)
     {
+        consolePrint("failed to open output file\n");
         condvarWakeAll(&g_writeCondvar);
         goto cleanup;
     }
+
+    // Unbuffered writes + preallocation 
+    setvbuf(shared_data->fd, NULL, _IONBF, 0);
+    ftruncate(fileno(shared_data->fd), (off_t)shared_data->total_size);
 
     for(u64 offset = 0, blksize = BLOCK_SIZE; offset < shared_data->total_size; offset += blksize)
     {
         if ((shared_data->total_size - offset) < blksize) blksize = (shared_data->total_size - offset);
 
-        /* Check if the transfer has been cancelled by the user. */
+        // Check if the transfer has been cancelled by the user
         if (shared_data->transfer_cancelled)
         {
             condvarWakeAll(&g_writeCondvar);
             break;
         }
 
-        /* Read current file data chunk. */
+        // Read current file
         shared_data->read_error = !ncaReadFsSection(shared_data->section_ctx, buf, blksize, offset + shared_data->total_offset);
         if (shared_data->read_error)
         {
             condvarWakeAll(&g_writeCondvar);
             break;
         }
-
-        /* Wait until the previous file data chunk has been written. */
         mutexLock(&g_fileMutex);
 
         if (shared_data->data_size && !shared_data->write_error) condvarWait(&g_readCondvar, &g_fileMutex);
-
         if (shared_data->write_error)
         {
             mutexUnlock(&g_fileMutex);
             break;
         }
 
-        /* Copy current file data chunk to the shared buffer. */
+        // Copy file data chunk to the buffer
         memcpy(shared_data->data, buf, blksize);
         shared_data->data_size = blksize;
-
-        /* Wake up the write thread to continue writing data. */
         mutexUnlock(&g_fileMutex);
         condvarWakeAll(&g_writeCondvar);
     }
 
-    /* Wait until the previous file data chunk has been written. */
+    // Wait until the previous file data chunk has been written
     mutexLock(&g_fileMutex);
     if (shared_data->data_size && !shared_data->write_error && !shared_data->transfer_cancelled) condvarWait(&g_readCondvar, &g_fileMutex);
     mutexUnlock(&g_fileMutex);
-
-    if ((shared_data->read_error || shared_data->write_error || shared_data->transfer_cancelled) && *path) remove(path);
-
 cleanup:
     free(buf);
 
@@ -228,7 +276,7 @@ static void write_thread_func(void *arg)
     ThreadSharedData *shared_data = (ThreadSharedData*)arg;
     if (!shared_data || !shared_data->data)
     {
-        shared_data->write_error = true;
+        if (shared_data) shared_data->write_error = true;
         goto end;
     }
 
@@ -270,9 +318,6 @@ u8 get_program_id_offset(TitleInfo *info, u32 program_count)
 {
     return 0;
 }
-
-#define R_PATH_EXISTS (0x402)
-#define R_PATH_DOESNT_EXIST (0x202)
 
 static bool check_sd_space(u64 required_size) {
 
@@ -413,7 +458,7 @@ bool do_add_downgrade() {
     u64 required_space = romfs_ctx.size + exefs_ctx.size + patch_data_size;
     if (!check_sd_space(required_space))
     {
-    goto cleanup;
+        goto cleanup;
     }
 
     shared_data.section_ctx = &(base_nca_ctx->fs_ctx[1]);
@@ -425,15 +470,7 @@ bool do_add_downgrade() {
     shared_data.data_size = 0;
     shared_data.data_written = 0;
 
-    consolePrint("creating file...");
-
-    if(!utilsCreateConcatenationFile(romfs_path))
-    {
-        consolePrint("create concatenation file failed\n");
-        goto cleanup;
-    }
-
-    consolePrint("done\n");
+    /* Output files (and ConcatenationFiles, when needed) are created by the read thread. */
 
 dump_start:
     consolePrint("creating threads\n");
@@ -519,17 +556,26 @@ dump_start:
 
     utilsSetLongRunningProcessState(false);
 
-    if (shared_data.read_error || shared_data.write_error)
+    // Both threads are done: it is now safe to close the output file.
+    if (shared_data.fd)
     {
-        consolePrint("i/o error\n");
-        goto cleanup;
+        fclose(shared_data.fd);
+        shared_data.fd = NULL;
     }
 
-    fclose(shared_data.fd);
+    utilsCommitSdCardFileSystemChanges();
 
-    if (shared_data.transfer_cancelled)
+    if (shared_data.read_error || shared_data.write_error || shared_data.transfer_cancelled)
     {
-        consolePrint(BOLDRED "process cancelled\n" RESET);
+        // Remove the partial output file
+        remove_sd_file_any(shared_data.mode ? exefs_path : romfs_path);
+
+        if (shared_data.transfer_cancelled)
+        {
+            consolePrint(BOLDRED "process cancelled\n" RESET);
+        } else {
+            consolePrint("i/o error\n");
+        }
         goto cleanup;
     }
 
@@ -588,6 +634,7 @@ void do_add_patch() {
         return;
     }
     fsFileClose(&f);
+    utilsCommitSdCardFileSystemChanges();
 }
     // Combine downgrade & patch into one action
 void do_add_downgrade_patch() {
@@ -610,16 +657,15 @@ void do_add_downgrade_patch() {
 
 void do_remove_downgrade() {
     consoleClear();
-    FsFileSystem* fs = utilsGetSdCardFileSystemObject();
 
-    int r = fsFsDeleteFile(fs, romfs_path + sdmc_prefix_length);
-    if(R_FAILED(r) && r != R_PATH_DOESNT_EXIST) {
+    int r = remove_sd_file_any(romfs_path);
+    if(R_FAILED(r)) {
         consolePrint("failed to delete romfs.bin (%x)\n", r);
         return;
     }
 
-    r = fsFsDeleteFile(fs, exefs_path + sdmc_prefix_length);
-    if(R_FAILED(r) && r != R_PATH_DOESNT_EXIST) {
+    r = remove_sd_file_any(exefs_path);
+    if(R_FAILED(r)) {
         consolePrint("failed to delete exefs.nsp (%x)\n", r);
         return;
     }
@@ -634,6 +680,8 @@ void do_remove_patch() {
         consolePrint("failed to delete patch (%x)\n", r);
         return;
     }
+
+    utilsCommitSdCardFileSystemChanges();
 }
     // Combine both actions to remove downgrade & patch
 void do_remove_downgrade_patch() {
@@ -761,7 +809,7 @@ int main(int argc, char *argv[])
         {
             selected_idx--;
 
-            if (selected_idx == UINT32_MAX)
+            if (selected_idx < 0)
             {
                 if (btn_down & HidNpadButton_Up)
                 {
