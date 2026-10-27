@@ -22,5 +22,5 @@ coming around finishing it back in 2022.
 - [Istador](https://github.com/Istador) for publishing the downgrader.
 - [Shadow](https://github.com/shadowninja108) for making the code for the downgrader.
 
-- Why is it separate & not a fork?
+#### Why is it separate & not a fork?
 - Idk how GitHub works and I felt like this is easier for me to do. 
