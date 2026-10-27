@@ -437,14 +437,19 @@ static void verify_exefs_after_apply(void) {
 
     if (calc_file_sha256(exefs_path, hash, true)) {
 
-        consolePrint("exefs.nsp hash:%s\n", hash);
+        consolePrint(" exefs.nsp\n");
+        consolePrint("hash:%s\n", hash);
         const char *label = find_known_hash_label(hash);
-        if (label) consolePrint(BOLDCYAN "Matches: %s\n" RESET, label);
-        else 
+        if (label) {
+        consolePrint(BOLDCYAN "Matches: %s\n" RESET, label);
+        }
+        else {
         consolePrint(BOLDGREEN "UNIQUE HASH FOUND! \n" RESET);
         consolePrint(BOLDYELLOW "Please report to https://github.com/Skylanderfree/odyssey-downgrader-v3/issues/3 \n" RESET);
         consolePrint(BOLDYELLOW "If you believe this is an error make an issue on GitHub \n" RESET);
-    } else {
+        }
+    } 
+        else {
         consolePrint(RED "Failed to calculate exefs.nsp checksum\n" RESET);
     }
 }
