@@ -344,6 +344,111 @@ static bool check_sd_space(u64 required_size) {
     return true;
 }
 
+//checks the exefs.nsp checksum
+typedef struct
+{
+    const char *label;  // names EX: "1.0.0 digital"
+    const char *hash;   // letters for SHA-256
+} KnownHash;
+
+//checks known hashes at the moment
+static const KnownHash known_exefs_hashes[] = {
+    { "1.0.0 Physical",  "2a355aace93ebb99df97bdcc2da664d8c27434b5396adc1266b4753fadc378d7" },
+    { "1.0.0 Physical",  "8d197e879e29936424b49def2b29cdaf18017d9796f48238f8794626df52b473" },
+    { "1.3.0 Physical",  "3b266d58d6829c9cea1699fe79906b77ec98fc1f842e77d7064d5187a9cd432c" },
+    { "1.4.0 Digital",   "2a355aace93ebb99df97bdcc2da664d8c27434b5396adc1266b4753fadc378d7" },
+};
+
+static const size_t known_exefs_hashes_count = sizeof(known_exefs_hashes) / sizeof(known_exefs_hashes[0]);
+static char g_exefsHash[SHA256_HASH_SIZE * 2 + 1] = {0};
+static void print_progress_bar(u8 percent) {
+    char bar[31];
+    u32 filled = (percent * 30) / 100;
+
+    for (u32 i = 0; i < 30; i++) bar[i] = (i < filled) ? '#' : '-';
+    bar[30] = '\0';
+
+    consolePrint("\r[%s] %3u%%", bar, percent);
+}
+
+// Checksum runs to the end
+static bool calc_file_sha256(const char *path, char *out_hex, bool show_progress) {
+    const size_t chunk = 0x40000; // 256 KiB
+    bool ok = false;
+    u8 *buf = malloc(chunk);
+    FILE *f = fopen(path, "rb");
+
+    if (buf && f) {
+        fseek(f, 0, SEEK_END);
+        u64 total = (u64)ftell(f);
+        fseek(f, 0, SEEK_SET);
+        Sha256Context ctx;
+        sha256ContextCreate(&ctx);
+        u64 done = 0;
+        int last_percent = -1;
+        size_t n;
+
+        while ((n = fread(buf, 1, chunk, f)) > 0) {
+            sha256ContextUpdate(&ctx, buf, n);
+            done += n;
+
+            if (show_progress && total) {
+                int percent = (int)((done * 100) / total);
+                if (percent != last_percent) {
+                    print_progress_bar((u8)percent);
+                    last_percent = percent;
+                }
+            }
+        }
+
+        if (!ferror(f)) {
+            u8 hash[SHA256_HASH_SIZE];
+            sha256ContextGetHash(&ctx, hash);
+            for (u32 i = 0; i < SHA256_HASH_SIZE; i++) sprintf(out_hex + (i * 2), "%02x", hash[i]);
+            out_hex[SHA256_HASH_SIZE * 2] = '\0';
+            ok = true;
+        }
+    }
+
+    if (f) fclose(f);
+    free(buf);
+    return ok;
+}
+
+// Returns the label of a matching known hash, or NULL.
+static const char *find_known_hash_label(const char *hash)
+{
+    for (size_t i = 0; i < known_exefs_hashes_count; i++) {
+        if (!strcmp(hash, known_exefs_hashes[i].hash)) return known_exefs_hashes[i].label; }
+    return NULL;
+}
+
+//refreshes g_exefsHash for the main menu
+static void update_exefs_hash(void) {
+    g_exefsHash[0] = '\0';
+    if (!utilsCheckIfFileExists(exefs_path)) return;
+    if (!calc_file_sha256(exefs_path, g_exefsHash, false)) g_exefsHash[0] = '\0';
+}
+
+static void verify_exefs_after_apply(void) {
+
+    char hash[SHA256_HASH_SIZE * 2 + 1] = {0};
+    consolePrint("Verifying exefs.nsp\n");
+
+    if (calc_file_sha256(exefs_path, hash, true)) {
+
+        consolePrint("exefs.nsp hash:%s\n", hash);
+        const char *label = find_known_hash_label(hash);
+        if (label) consolePrint(BOLDCYAN "Matches: %s\n" RESET, label);
+        else 
+        consolePrint(BOLDGREEN "UNIQUE HASH FOUND! \n" RESET);
+        consolePrint(BOLDYELLOW "Please report to https://github.com/Skylanderfree/odyssey-downgrader-v3/issues/3 \n" RESET);
+        consolePrint(BOLDYELLOW "If you believe this is an error make an issue on GitHub \n" RESET);
+    } else {
+        consolePrint(RED "Failed to calculate exefs.nsp checksum\n" RESET);
+    }
+}
+
 bool do_add_downgrade() {
     consoleClear();
 
@@ -642,7 +747,7 @@ void do_add_downgrade_patch() {
     // If downgrade is cancelled then patch is not applied
     if (!do_add_downgrade())
     {
-        consolePrint(BOLDRED "downgrade and patch have been cancelled\n" RESET);
+        consolePrint(RED "downgrade and patch have been cancelled\n" RESET);
         consolePrint("press any button to exit\n");
         utilsWaitForButtonPress(0);
         return;
@@ -651,6 +756,7 @@ void do_add_downgrade_patch() {
 
     consoleClear();
     consolePrint(BOLDGREEN "downgrade and patch have been added\n" RESET);
+    verify_exefs_after_apply();
     consolePrint("press any button to exit\n");
     utilsWaitForButtonPress(0);
 }
@@ -713,6 +819,10 @@ static status_t get_status() {
     {
         status |= STATUS_DOWNGRADE;
     }
+
+    // refresh the exefs.nsp hash
+    update_exefs_hash();
+
     return status;
 }
 
@@ -769,7 +879,14 @@ int main(int argc, char *argv[])
         if(status & STATUS_DOWNGRADE) {
             printf(BOLDGREEN "Downgrade is already added.\n" RESET);
         } else {
-            printf(BOLDRED "Downgrade is not added.\n" RESET);
+            printf(RED "Downgrade is not added.\n" RESET);
+        }
+        if (g_exefsHash[0])
+        {
+            const char *label = find_known_hash_label(g_exefsHash);
+            printf("exefs.nsp sha256:\n%s\n", g_exefsHash);
+            if (label) printf(BOLDCYAN "Matches: %s\n" RESET, label);
+            else printf(BOLDYELLOW "Unique hash\n" RESET);
         }
 
         fflush(stdout);
